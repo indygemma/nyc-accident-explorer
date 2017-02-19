@@ -301,6 +301,72 @@
                                           )}));  }}}
 
 ;;
+;; Hour Component
+(defn hour-component [filter-state];  {{{
+    (base-filtered-component {:name "hour-component"
+                              :filter-state filter-state
+                              :url (str service-url "/rpc/stats_hour_by_filter_accidents")
+                              :state (reagent/atom {:has-result false
+                                                    :result (list)
+                                                    :last-filter-state @filter-state})
+                              :update-state-on-load (fn [state filter-state response]
+                                                        (reset! state {:result response
+                                                                       :last-filter-state @filter-state
+                                                                       :has-result true}))
+                              :render (fn [state filter-state]
+                                          [:div
+                                           [:h2 "Hours During the Day"]
+                                           (if (:has-result @state)
+                                               [:ul
+                                                (for [item (:result @state)]
+                                                    ^{:key item} [:li (:hour item) ": " (:count item)])])]
+                                          )}));  }}}
+
+;;
+;; Intersection Component
+;;
+(defn intersection-component [filter-state];  {{{
+    (base-filtered-component {:name "intersection-component"
+                              :filter-state filter-state
+                              :url (str service-url "/rpc/stats_intersection_by_filter_accidents")
+                              :state (reagent/atom {:has-result false
+                                                    :result (list)
+                                                    :last-filter-state @filter-state})
+                              :update-state-on-load (fn [state filter-state response]
+                                                        (reset! state {:result response
+                                                                       :last-filter-state @filter-state
+                                                                       :has-result true}))
+                              :render (fn [state filter-state]
+                                          [:div
+                                           [:h2 "Related Intersections"]
+                                           (if (:has-result @state)
+                                               [:ul
+                                                (for [item (:result @state)]
+                                                    ^{:key item} [:li (:name item) ": " (:count item)])])]
+                                          )}));  }}}
+
+(defn off-street-component [filter-state];  {{{
+    (base-filtered-component {:name "off-street-component"
+                              :filter-state filter-state
+                              :url (str service-url "/rpc/stats_off_street_by_filter_accidents")
+                              :state (reagent/atom {:has-result false
+                                                    :result (list)
+                                                    :last-filter-state @filter-state})
+                              :update-state-on-load (fn [state filter-state response]
+                                                        (prn "update off street component: " response)
+                                                        (reset! state {:result response
+                                                                       :last-filter-state @filter-state
+                                                                       :has-result true}))
+                              :render (fn [state filter-state]
+                                          [:div
+                                           [:h2 "Off Street Adresses"]
+                                           (if (:has-result @state)
+                                               [:ul
+                                                (for [item (:result @state)]
+                                                    ^{:key item} [:li (:name item) ": " (:count item)])])]
+                                          )}));  }}}
+
+;;
 ;; Casualty Component
 ;;
 (defn casualty-component [filter-state];  {{{
@@ -387,6 +453,9 @@
          [year-component filter-state]
          [month-component filter-state]
          [weekday-component filter-state]
+         [hour-component filter-state]
+         [intersection-component filter-state]
+         [off-street-component filter-state]
          ]))
 
 (defn footer-component []
