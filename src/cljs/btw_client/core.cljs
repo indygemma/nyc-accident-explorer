@@ -6,12 +6,11 @@
         [goog.net.XhrIo :as xhr])
     (:require-macros [cljs.core.async.macros :refer [go go-loop alt!]]))
 
-(defn log [s]
-  (.log js/console (str s)))
-
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Vars
+
+(defonce service-url
+    "http://10.0.0.55:3000")
 
 (defonce debug?
   ^boolean js/goog.DEBUG)
@@ -77,16 +76,18 @@
                       email-address-atom
                       [prompt-message "What's your email?"]))
 
-(defn removable-filter [filter-state filter-type value]
+;;
+;; Active Filters Component
+;;
+(defn removable-filter [filter-state filter-type value];  {{{
     [:a {:href "#"
          :on-click (fn [e]
-                       (prn "Removing filter: " value)
+                       ;(prn "Removing filter: " value)
                        (swap! filter-state assoc filter-type nil)
                        false)
          }
-     value])
-
-(defn active-filters-component [filter-state]
+     value]);  }}}
+(defn active-filters-component [filter-state];  {{{
     (let [borough       (:borough @filter-state)
           intersection1 (:intersection1 @filter-state)
           intersection2 (:intersection2 @filter-state)
@@ -96,24 +97,39 @@
         [:div
          [:h5 "Active Filters"
           [:ul
-           [:li [:span "Borough: "] (if (empty? borough) "None"
-                                        (removable-filter filter-state :borough borough))]
-           [:li [:span "Street Intersection (1): "] (if (empty? intersection1) "None"
-                                                        (removable-filter filter-state :intersection1 intersection1))]
-           [:li [:span "Street Intersection (2): "] (if (empty? intersection2) "None"
-                                                        (removable-filter filter-state :intersection2 intersection2))]
-           [:li [:span "Off Street Address: "] (if (empty? off-street) "None"
-                                                   (removable-filter filter-state :off-street off-street))]
-           [:li [:span "Vehicle Type: "] (if (empty? vehicle-type) "None"
-                                             (removable-filter filter-state :vehicle-type vehicle-type))]
-           [:li [:span "Contributing Factor: "] (if (empty? factor) "None"
-                                                    (removable-filter filter-state :factor factor))]
-           ]]]))
+           (if (not (empty? borough))
+               [:li [:span "Borough: "] (removable-filter filter-state :borough borough)])
+           (if (not (empty? intersection1))
+               [:li [:span "Street Intersection (1): "] (removable-filter filter-state :intersection1 intersection1)])
+           (if (not (empty? intersection2))
+               [:li [:span "Street Intersection (2): "] (removable-filter filter-state :intersection2 intersection2)])
+           (if (not (empty? off-street))
+               [:li [:span "Off Street Address: "] (removable-filter filter-state :off-street off-street)])
+           (if (not (empty? vehicle-type))
+               [:li [:span "Vehicle Type: "] (removable-filter filter-state :vehicle-type vehicle-type)])
+           (if (not (empty? factor))
+               [:li [:span "Contributing Factor: "] (removable-filter filter-state :factor factor)])
+           ]]]));  }}}
 
 ;;
 ;; Auto Complete component
 ;;
-(defn autocomplete-input [post-ch default-value state];  {{{
+(defn add-filter [filter-state item];  {{{
+    (let [t (:type item)]
+        (cond (= t "intersection")
+              ;; we only let setting the other intersection by the related intersection component
+              (do (swap! filter-state assoc :intersection1 (:result item))
+                  (swap! filter-state assoc :intersection2 nil))
+              (= t "borough")
+              (swap! filter-state assoc :borough (:result item))
+              (= t "off street")
+              (swap! filter-state assoc :off-street (:result item))
+              (= t "vehicle_type")
+              (swap! filter-state assoc :vehicle-type (:result item))
+              (= t "factor")
+              (swap! filter-state assoc :factor (:result item))
+              :else (prn "Unknown type: " t))));  }}}
+(defn autocomplete-input [filter-state post-ch default-value state];  {{{
     (if (and (clojure.string/blank? (:value @state))
              (not (:has-focus @state)))
         (swap! state assoc :value default-value))
@@ -122,6 +138,7 @@
               :defaultValue default-value
               :value (:value @state) 
               :on-change (fn [e]
+                             (swap! state assoc :show-results true)
                              (swap! state assoc :value (-> e .-target .-value))
                              (put! post-ch (:value @state))
                              )
@@ -129,13 +146,18 @@
                             (if (= default-value (:value @state))
                                 (swap! state assoc :value "")))
               :on-focus (fn [e]
-                            (swap! state assoc  :has-focus true)
+                            (swap! state assoc :has-focus true)
                             ; at this point we gain focus again. If we have a previous query, rerun it
                             (swap! state assoc :show-results true))
               :on-blur (fn [e]
                            (prn "ac input losing focus...")
                            (swap! state assoc :has-focus false)
                            (swap! state assoc :show-results false))
+              :on-key-press (fn [e]
+                                (if (= 13 (.-charCode e))
+                                    (do (add-filter filter-state (first (:result @state)))
+                                        (swap! state assoc :show-results false)
+                                        (swap! state assoc :value ""))))
               }]]);  }}}
 (defn autocomplete-lister [filter-state state];  {{{
     "List the autocomplete result within this component, but only if we are told to do so."
@@ -151,20 +173,7 @@
                                                    (swap! state assoc :value "")
                                                    (swap! state assoc :result (list))
                                                    (prn "changing filter state")
-                                                   (let [t (:type item)]
-                                                       (cond (= t "intersection")
-                                                             ;; we only let setting the other intersection by the related intersection component
-                                                             (swap! filter-state assoc :intersection1 (:result item))
-                                                             (= t "borough")
-                                                             (swap! filter-state assoc :borough (:result item))
-                                                             (= t "off street")
-                                                             (swap! filter-state assoc :off-street (:result item))
-                                                             (= t "vehicle_type")
-                                                             (swap! filter-state assoc :vehicle-type (:result item))
-                                                             (= t "factor")
-                                                             (swap! filter-state assoc :factor (:result item))
-                                                             :else (prn "Unknown type: " t)))
-                                                   ;(put! @filter-ch [(:result item) (:type item)])
+                                                   (add-filter filter-state item)
                                                    false)
                                      :href "#"}
                                  (:result item)]
@@ -174,7 +183,7 @@
          ]))
 ;  }}}
 (defn autocomplete-component [filter-state];  {{{
-    (let [url           "http://10.0.0.55:3000/rpc/autocomplete_all"
+    (let [url           (str service-url "/rpc/autocomplete_all")
           default-value "Filter accidents by typing here..."
           input-state   (reagent/atom {:value ""
                                        :has-focus false
@@ -190,7 +199,7 @@
                      (recur)))
         (fn []
             [:div#autocomplete
-             [autocomplete-input post-ch default-value input-state]
+             [autocomplete-input filter-state post-ch default-value input-state]
              [active-filters-component filter-state]
              [autocomplete-lister filter-state input-state]
              ])));  }}}
@@ -199,7 +208,7 @@
 ;; Year Component
 ;;
 (defn year-component [filter-state];  {{{
-    (let [url      "http://10.0.0.55:3000/rpc/stats_year_by_filter_accidents"
+    (let [url      (str service-url "/rpc/stats_year_by_filter_accidents")
           state (reagent/atom {:has-result false
                                :result (list)
                                :last-filter-state @filter-state})
@@ -259,8 +268,11 @@
                   (for [item (:result @state)]
                       ^{:key item} [:li (:month item) ": " (:count item)])])])));  }}}
 
-(defn weekday-component [filter-state]
-    (let [url      "http://10.0.0.55:3000/rpc/stats_weekday_by_filter_accidents"
+;;
+;; Weekday Component
+;;
+(defn weekday-component [filter-state];  {{{
+    (let [url      (str service-url "/rpc/stats_weekday_by_filter_accidents")
           state (reagent/atom {:has-result false
                                :result (list)
                                :last-filter-state @filter-state})
@@ -286,13 +298,13 @@
              (if (:has-result @state)
                  [:ul
                   (for [item (:result @state)]
-                      ^{:key item} [:li (:name item) ": " (:count item)])])])))
+                      ^{:key item} [:li (:name item) ": " (:count item)])])])));  }}}
 
 ;;
 ;; Casualty Component
 ;;
 (defn casualty-component [filter-state];  {{{
-    (let [url      "http://10.0.0.55:3000/rpc/stats_casualties_by_filter_accidents"
+    (let [url      (str service-url "/rpc/stats_casualties_by_filter_accidents")
           state (reagent/atom {:count nil
                                :total-number-persons-injured nil
                                :total-number-persons-killed nil
@@ -326,7 +338,6 @@
                                     :total-number-motorist-killed (:total_number_motorist_killed x)
                                     :has-result true
                                     :last-filter-state @filter-state})
-                     (prn "got response. current state: " @state)
                      (recur)))
         (fn []
             (let [this (reagent/current-component)]
