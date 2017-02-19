@@ -234,6 +234,28 @@
 ;  }}}
 
 ;;
+;; Season Component
+;;
+(defn season-component [filter-state];  {{{
+    (base-filtered-component {:name "season-component"
+                              :filter-state filter-state
+                              :url (str service-url "/rpc/stats_season_by_filter_accidents")
+                              :state (reagent/atom {:has-result false
+                                                    :result (list)
+                                                    :last-filter-state @filter-state})
+                              :update-state-on-load (fn [state filter-state response]
+                                                        (reset! state {:result response
+                                                                       :last-filter-state @filter-state
+                                                                       :has-result true}))
+                              :render (fn [state filter-state]
+                                          [:div
+                                           [:h2 "Timeline"]
+                                           (if (:has-result @state)
+                                               [:ul
+                                                (for [item (:result @state)]
+                                                    ^{:key item} [:li (:year item) "-" (:month item) ": " (:count item)])])])}));  }}}
+
+;;
 ;; Year Component
 ;;
 (defn year-component [filter-state];  {{{
@@ -419,13 +441,78 @@
                                                 ])]
                                           )}));  }}}
 
+;;
+;; Borough Component
+;;
+(defn borough-component [filter-state];  {{{
+    (base-filtered-component {:name "borough-component"
+                              :filter-state filter-state
+                              :url (str service-url "/rpc/stats_borough_by_filter_accidents")
+                              :state (reagent/atom {:has-result false
+                                                    :result (list)
+                                                    :last-filter-state @filter-state})
+                              :update-state-on-load (fn [state filter-state response]
+                                                        (reset! state {:result response
+                                                                       :last-filter-state @filter-state
+                                                                       :has-result true}))
+                              :render (fn [state filter-state]
+                                          [:div
+                                           [:h2 "Boroughs"]
+                                           (if (:has-result @state)
+                                               [:ul
+                                                (for [item (:result @state)]
+                                                    ^{:key item} [:li (:name item) ": " (:count item)])])]
+                                          )}));  }}}
+
+;;
+;; Factor Component
+;;
+(defn factor-component [filter-state];  {{{
+    (base-filtered-component {:name "factor-component"
+                              :filter-state filter-state
+                              :url (str service-url "/rpc/stats_factors_by_filter_accidents")
+                              :state (reagent/atom {:has-result false
+                                                    :result (list)
+                                                    :last-filter-state @filter-state})
+                              :update-state-on-load (fn [state filter-state response]
+                                                        (reset! state {:result response
+                                                                       :last-filter-state @filter-state
+                                                                       :has-result true}))
+                              :render (fn [state filter-state]
+                                          [:div
+                                           [:h2 "Factors"]
+                                           (if (:has-result @state)
+                                               [:ul
+                                                (for [item (:result @state)]
+                                                    ^{:key item} [:li (:name item) ": " (:count item)])])]
+                                          )}));  }}}
+
+;;
+;; Vehicle Type Component
+;;
+(defn vehicle-type-component [filter-state];  {{{
+    (base-filtered-component {:name "vehicle-type-component"
+                              :filter-state filter-state
+                              :url (str service-url "/rpc/stats_vehicle_types_by_filter_accidents")
+                              :state (reagent/atom {:has-result false
+                                                    :result (list)
+                                                    :last-filter-state @filter-state})
+                              :update-state-on-load (fn [state filter-state response]
+                                                        (reset! state {:result response
+                                                                       :last-filter-state @filter-state
+                                                                       :has-result true}))
+                              :render (fn [state filter-state]
+                                          [:div
+                                           [:h2 "Vehicle Types"]
+                                           (if (:has-result @state)
+                                               [:ul
+                                                (for [item (:result @state)]
+                                                    ^{:key item} [:li (:name item) ": " (:count item)])])]
+                                          )}));  }}}
+
 (defn cluster-component []
     [:div#cluster
      [:h2 "Clustering"]])
-
-(defn season-component []
-    [:div
-     [:h2 "Timeline"]])
 
 (defn setup-filter-controller [filter-state]
     "A controller responsible for actually adding new filters and triggering
@@ -453,11 +540,14 @@
          [autocomplete-component filter-state]
          [casualty-component filter-state]
          [cluster-component]
-         [season-component]
+         [borough-component filter-state]
+         [season-component filter-state]
          [year-component filter-state]
          [month-component filter-state]
          [weekday-component filter-state]
          [hour-component filter-state]
+         [factor-component filter-state]
+         [vehicle-type-component filter-state]
          [intersection-component filter-state]
          [off-street-component filter-state]
          ]))
