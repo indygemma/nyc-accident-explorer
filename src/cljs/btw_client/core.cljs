@@ -157,7 +157,8 @@
                                 (if (= 13 (.-charCode e))
                                     (do (add-filter filter-state (first (:result @state)))
                                         (swap! state assoc :show-results false)
-                                        (swap! state assoc :value ""))))
+                                        (swap! state assoc :value "")
+                                        (swap! state assoc :result (list)))))
               }]]);  }}}
 (defn autocomplete-lister [filter-state state];  {{{
     "List the autocomplete result within this component, but only if we are told to do so."
@@ -345,6 +346,9 @@
                                                     ^{:key item} [:li (:name item) ": " (:count item)])])]
                                           )}));  }}}
 
+;;
+;; Off Street Component
+;;
 (defn off-street-component [filter-state];  {{{
     (base-filtered-component {:name "off-street-component"
                               :filter-state filter-state
