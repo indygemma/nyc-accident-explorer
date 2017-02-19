@@ -1,0 +1,63 @@
+h1,h2,h3,h4,h5,h6 {
+    background-color: transparent;
+    color: dimgray;
+    font-family: "Segoe UI", "Lucida Grande", Tahoma, Verdana, Helvetica,
+                    Arial, sans-serif;
+}
+ 
+body {
+    font-family: "Segoe UI", "Lucida Grande", Tahoma, Verdana, Helvetica,
+                    Arial, sans-serif;
+    background-color: white;
+    color: rgb(70, 70, 70);
+    font-size: 0.95em;
+}
+ 
+#footer{
+    margin-bottom:30px;
+    font-size:0.825em;
+    color: silver;
+}
+ 
+#left-column {
+    width: 200px;
+    position: fixed;
+}
+ 
+#right-column {
+    float: right;
+    text-align: right
+}
+
+#autocomplete-input input {
+    padding: 8px;
+    width: 98%;
+    font-size: 1.3em;
+    color: #ababab;
+}
+
+#autocomplete ul {
+    list-style: none;
+    margin: 0px;
+    padding: 0px;
+}
+
+#autocomplete ul li {
+    padding: 2px;
+    margin-bottom: 2px;
+}
+
+#autocomplete ul li:hover {
+    background-color: yellow;
+}
+
+#autocomplete ul li span.type {
+    font-size: 0.7em;
+    padding: 5px;
+}
+
+#autocomplete ul li span.intersection { background-color: #eaeaea; }
+#autocomplete ul li span.off          { background-color: yellow; }
+#autocomplete ul li span.vehicle_type { background-color: #dddddd; }
+#autocomplete ul li span.borough      { background-color: #333; color: #fff; }
+#autocomplete ul li span.factor       { background-color: red; color: #fff; }
