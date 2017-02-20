@@ -10,7 +10,7 @@
 ;; Vars
 
 (defonce service-url
-    "http://10.0.0.55:3000")
+    "http://localhost:3000")
 
 (defonce debug?
   ^boolean js/goog.DEBUG)
@@ -239,7 +239,7 @@
 (defn season-component [filter-state];  {{{
     (base-filtered-component {:name "season-component"
                               :filter-state filter-state
-                              :url (str service-url "/rpc/stats_season_by_filter_accidents")
+                              :url (str service-url "/rpc/stats_season_cached_by_filter_accidents?select=year,month,count&order=year,month")
                               :state (reagent/atom {:has-result false
                                                     :result (list)
                                                     :last-filter-state @filter-state})
@@ -261,7 +261,7 @@
 (defn year-component [filter-state];  {{{
     (base-filtered-component {:name "year-component"
                               :filter-state filter-state
-                              :url (str service-url "/rpc/stats_year_by_filter_accidents")
+                              :url (str service-url "/rpc/stats_year_cached_by_filter_accidents?select=year,count")
                               :state (reagent/atom {:has-result false
                                                     :result (list)
                                                     :last-filter-state @filter-state})
@@ -283,7 +283,7 @@
 (defn month-component [filter-state];  {{{
     (base-filtered-component {:name "month-component"
                               :filter-state filter-state
-                              :url (str service-url "/rpc/stats_month_by_filter_accidents")
+                              :url (str service-url "/rpc/stats_month_cached_by_filter_accidents?select=month,count")
                               :state (reagent/atom {:has-result false
                                                     :result (list)
                                                     :last-filter-state @filter-state})
@@ -306,7 +306,7 @@
 (defn weekday-component [filter-state];  {{{
     (base-filtered-component {:name "weekday-component"
                               :filter-state filter-state
-                              :url (str service-url "/rpc/stats_weekday_by_filter_accidents")
+                              :url (str service-url "/rpc/stats_weekday_cached_by_filter_accidents?select=name,count")
                               :state (reagent/atom {:has-result false
                                                     :result (list)
                                                     :last-filter-state @filter-state})
@@ -328,7 +328,7 @@
 (defn hour-component [filter-state];  {{{
     (base-filtered-component {:name "hour-component"
                               :filter-state filter-state
-                              :url (str service-url "/rpc/stats_hour_by_filter_accidents")
+                              :url (str service-url "/rpc/stats_hour_cached_by_filter_accidents?select=hour,count")
                               :state (reagent/atom {:has-result false
                                                     :result (list)
                                                     :last-filter-state @filter-state})
@@ -351,7 +351,7 @@
 (defn intersection-component [filter-state];  {{{
     (base-filtered-component {:name "intersection-component"
                               :filter-state filter-state
-                              :url (str service-url "/rpc/stats_intersection_by_filter_accidents")
+                              :url (str service-url "/rpc/stats_intersection_cached_by_filter_accidents?select=name,count&limit=25")
                               :state (reagent/atom {:has-result false
                                                     :result (list)
                                                     :last-filter-state @filter-state})
@@ -361,7 +361,7 @@
                                                                        :has-result true}))
                               :render (fn [state filter-state]
                                           [:div
-                                           [:h2 "Related Intersections"]
+                                           [:h2 "Related Intersections (Top 25)"]
                                            (if (:has-result @state)
                                                [:ul
                                                 (for [item (:result @state)]
@@ -374,7 +374,7 @@
 (defn off-street-component [filter-state];  {{{
     (base-filtered-component {:name "off-street-component"
                               :filter-state filter-state
-                              :url (str service-url "/rpc/stats_off_street_by_filter_accidents")
+                              :url (str service-url "/rpc/stats_off_street_cached_by_filter_accidents?select=name,count&limit=25")
                               :state (reagent/atom {:has-result false
                                                     :result (list)
                                                     :last-filter-state @filter-state})
@@ -384,13 +384,13 @@
                                                                        :last-filter-state @filter-state
                                                                        :has-result true}))
                               :render (fn [state filter-state]
-                                          [:div
-                                           [:h2 "Off Street Adresses"]
-                                           (if (:has-result @state)
-                                               [:ul
-                                                (for [item (:result @state)]
-                                                    ^{:key item} [:li (:name item) ": " (:count item)])])]
-                                          )}));  }}}
+                                          (if (not (empty? (:result @state)))
+                                              [:div
+                                               [:h2 "Off Street Adresses (Top 25)"]
+                                               (if (:has-result @state)
+                                                   [:ul
+                                                    (for [item (:result @state)]
+                                                        ^{:key item} [:li (:name item) ": " (:count item)])])]))}));  }}}
 
 ;;
 ;; Casualty Component
@@ -398,7 +398,7 @@
 (defn casualty-component [filter-state];  {{{
     (base-filtered-component {:name "casualty-component"
                               :filter-state filter-state
-                              :url (str service-url "/rpc/stats_casualties_by_filter_accidents")
+                              :url (str service-url "/rpc/stats_casualties_cached_by_filter_accidents")
                               :state (reagent/atom {:count nil
                                                     :total-number-persons-injured nil
                                                     :total-number-persons-killed nil
@@ -447,7 +447,7 @@
 (defn borough-component [filter-state];  {{{
     (base-filtered-component {:name "borough-component"
                               :filter-state filter-state
-                              :url (str service-url "/rpc/stats_borough_by_filter_accidents")
+                              :url (str service-url "/rpc/stats_borough_cached_by_filter_accidents?select=name,count")
                               :state (reagent/atom {:has-result false
                                                     :result (list)
                                                     :last-filter-state @filter-state})
@@ -470,7 +470,7 @@
 (defn factor-component [filter-state];  {{{
     (base-filtered-component {:name "factor-component"
                               :filter-state filter-state
-                              :url (str service-url "/rpc/stats_factors_by_filter_accidents")
+                              :url (str service-url "/rpc/stats_factors_cached_by_filter_accidents?select=name,count")
                               :state (reagent/atom {:has-result false
                                                     :result (list)
                                                     :last-filter-state @filter-state})
@@ -493,7 +493,7 @@
 (defn vehicle-type-component [filter-state];  {{{
     (base-filtered-component {:name "vehicle-type-component"
                               :filter-state filter-state
-                              :url (str service-url "/rpc/stats_vehicle_types_by_filter_accidents")
+                              :url (str service-url "/rpc/stats_vehicle_types_cached_by_filter_accidents?select=name,count")
                               :state (reagent/atom {:has-result false
                                                     :result (list)
                                                     :last-filter-state @filter-state})
