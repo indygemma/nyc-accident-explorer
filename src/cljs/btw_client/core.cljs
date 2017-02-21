@@ -31,6 +31,7 @@
               :factor nil
               :cluster-id nil
               }
+    :filtered-result  0 ; This is the actual value that is being filtered with (total accident count, persons injured etc.)
     }))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -219,7 +220,7 @@
      reload automatically."
     (let [post-ch          (chan (sliding-buffer 1))
           ;; component-did-update function
-          component-did-update (or component-did-update-fn (fn [this]))
+          component-did-update (or component-did-update-fn (fn [this state]))
           component-did-mount  (or component-did-mount-fn (fn [this]))
           component-render     (or component-render-fn (fn [state filter-state]
                                                            (prn "default render logic for " component-name)))
@@ -240,7 +241,8 @@
                      (update-state-on-load state filter-state (:body response))
                      (recur)))
         (reagent/create-class
-            {:component-did-update component-did-update
+            {:component-did-update (fn [this]
+                                       (component-did-update this state))
              :component-did-mount  component-did-mount
              :reagent-render       (fn []
                                        (if (update-condition state filter-state)
@@ -454,6 +456,8 @@
                                                                                :url url
                                                                                :has-result true
                                                                                :last-filter-state @filter-state})
+                                                                ; TODO this should be based on the user's selection later
+                                                                (swap! app-state assoc :filtered-result (:count x))
                                                                 ))
                                   :component-render (fn [state filter-state]
                                                         [:div#casualty-component
@@ -499,8 +503,21 @@
 ;;
 ;; Borough Component
 ;;
+(defn- length [[from to]]
+    (- to from))
+(defn- domain-to-range
+    "Converts a value from domain to range. In other words, maps the current state of the world
+    to what the animation's value needs to be."
+    [[domain-from domain-to :as domain] [range-from range-to :as range] domain-value]
+    (let [domain-len (length domain)
+          range-len (length range)
+          domain-offset (- domain-value domain-from)
+          ratio (/ domain-offset domain-len)
+          range-offset (* ratio range-len)]
+        (+ range-offset range-from)))
 (defn borough-component [filter-state];  {{{
-    (let [url (str service-url "/rpc/stats_borough_cached_by_filter_accidents?select=name,count")]
+    (let [dom-node (reagent/atom nil)
+          url (str service-url "/rpc/stats_borough_cached_by_filter_accidents?select=name,count")]
         (base-filtered-component {:name "borough-component"
                                   :filter-state filter-state
                                   :state (reagent/atom {:has-result false
@@ -512,14 +529,57 @@
                                                                            :url url
                                                                            :last-filter-state @filter-state
                                                                            :has-result true}))
-                                  :component-render (fn [state filter-state]
-                                                        [:div
-                                                         [:h2 "Boroughs"]
-                                                         (if (:has-result @state)
-                                                             [:ul
-                                                              (for [item (:result @state)]
-                                                                  ^{:key item} [:li (:name item) ": " (:count item)])])]
-                                                        )})));  }}}
+                                  :component-did-update
+                                  (fn [this state]
+                                      (let [canvas (.-nextSibling (.-firstChild @dom-node))
+                                            ctx    (.getContext canvas "2d")
+                                            w      (.-clientWidth canvas)
+                                            h      (.-clientHeight canvas)
+                                            max-value (:filtered-result @app-state)
+                                            max-n     (count (:result @state))
+                                            single-h  (/ h max-n)]
+                                          (.clearRect ctx 0 0 w h)
+                                          (prn "domain-to-range" (domain-to-range [0 max-value] [0 500] 3000))
+                                          (prn "max-value: " max-value ", max-n: " max-n ", single-height " single-h)
+                                          ;(doseq [index (range 0 w 10)]
+                                              ;(.moveTo ctx (+ index 0.5) 0)
+                                              ;(.lineTo ctx (+ index 0.5) h))
+                                          (doseq [index (range 0 h single-h)]
+                                              (.moveTo ctx 0 (+ index 0.5))
+                                              (.lineTo ctx w (+ index 0.5)))
+                                          (.moveTo ctx 0 (- h 0.5))
+                                          (.lineTo ctx w (- h 0.5))
+                                          (set! (.-strokeStyle ctx) "#444")
+                                          (.stroke ctx)
+                                          (set! (.-fillStyle ctx) "darkblue")
+                                          (set! (.-strokeStyle ctx) "#fff")
+                                          (doseq [[value index] (map vector (:result @state) (range))]
+                                              (.fillRect ctx 0 (* index single-h) (domain-to-range [0 max-value] [0 w] (:count value)) single-h)
+                                              (.strokeRect ctx 0 (+ (* index single-h) 0.5) (domain-to-range [0 max-value] [0 w] (:count value)) (+ single-h 0.5))
+                                              )
+                                          ;(.fillRect ctx 0 (* 0 single-h) (domain-to-range [0 max-value] [0 w] (:count (nth (:result @state) 0))) single-h)
+                                          ;(.fillRect ctx 0 (* 1 single-h) (domain-to-range [0 max-value] [0 w] (:count (nth (:result @state) 1))) single-h)
+                                          ;(.fillRect ctx 0 (* 2 single-h) (domain-to-range [0 max-value] [0 w] (:count (nth (:result @state) 2))) single-h)
+                                      ))
+
+                                  :component-did-mount
+                                  (fn [this]
+                                      (reset! dom-node (reagent/dom-node this)))
+
+                                  :component-render
+                                  (fn [state filter-state]
+                                      [:div#boroughs.with-canvas
+                                       [:h2 "Boroughs"]
+                                       [:canvas (if (not (:has-result @state)) {:style {:display "none"}})
+                                        (if-let [node @dom-node]
+                                            (do (prn "node is there!"
+                                                     {:width (.-clientWidth node)
+                                                      :height (.-clientHeight node)})))]
+                                      (if (:has-result @state)
+                                          [:ul
+                                           (for [item (:result @state)]
+                                               ^{:key item} [:li (:name item) ": " (:count item)])])
+                                      ])})));  }}}
 
 ;;
 ;; Factor Component

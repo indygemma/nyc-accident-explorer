@@ -5,14 +5,21 @@ h1,h2,h3,h4,h5,h6 {
                     Arial, sans-serif;
 }
  
-body {
+html,body {
+    margin:0;
+    padding:0;
+    height:100%;
     font-family: "Segoe UI", "Lucida Grande", Tahoma, Verdana, Helvetica,
                     Arial, sans-serif;
     background-color: white;
     color: rgb(70, 70, 70);
     font-size: 0.95em;
 }
- 
+
+div#app {
+    height: 100%;
+}
+
 #footer{
     margin-bottom:30px;
     font-size:0.825em;
@@ -27,6 +34,19 @@ body {
 #right-column {
     float: right;
     text-align: right
+}
+
+/**
+ * Canvas General style
+ */
+div.with-canvas {
+    margin: 0px;
+    padding: 0px;
+    border: 0px;
+    height: 100%;
+}
+div.with-canvas canvas {
+    display: block;
 }
 
 /**
