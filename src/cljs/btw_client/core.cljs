@@ -8,6 +8,8 @@
         )
     (:require-macros [cljs.core.async.macros :refer [go go-loop alt!]]))
 
+(defn int-comma [n] (cl-format nil "~:d" n))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Vars
 
@@ -208,6 +210,190 @@
              [autocomplete-lister filter-state input-state]
              ])));  }}}
 
+;;
+;; Chart Canvas logic
+;;
+(defn- length [[from to]];  {{{
+    (- to from));  }}}
+(defn- domain-to-range;  {{{
+    "Converts a value from domain to range. In other words, maps the current state of the world
+    to what the animation's value needs to be."
+    [[domain-from domain-to :as domain] [range-from range-to :as range] domain-value]
+    (let [domain-len (length domain)
+          range-len (length range)
+          domain-offset (- domain-value domain-from)
+          ratio (/ domain-offset domain-len)
+          range-offset (* ratio range-len)]
+        (+ range-offset range-from)));  }}}
+(defn horizontal-barchart [dom-node state];  {{{
+    (if (:has-result @state)
+        (let [canvas (.-nextSibling (.-firstChild @dom-node))
+              ctx    (.getContext canvas "2d")
+              w      (.-clientWidth canvas)
+              pad-h  10
+              h      (- (.-clientHeight canvas) pad-h)
+              max-value (:filtered-result @app-state)
+              max-n     (count (:result @state))
+              ; first entry has the highest count
+              highest   (first (:result @state))
+              lowest    (last  (:result @state))
+              max-text-width (first (sort #(compare %2 %1) (map (fn [item] (.-width (.measureText ctx (:name item)))) (:result @state))))
+              single-h  (/ h max-n)
+              ;sw (+ max-text-width (/ max-text-width 10))
+              sw 0
+              ]
+            ;(.translate ctx 0.5 0.5) ; is it possible to do this once?
+            (.clearRect ctx 0 0 w h)
+            (prn "max-text-width: " max-text-width)
+            (prn "domain-to-range" (domain-to-range [0 max-value] [sw 500] 3000))
+            (prn "max-value: " max-value ", max-n: " max-n ", single-height " single-h)
+            ;(doseq [index (range 0 w 10)]
+            ;(.moveTo ctx index 0)
+            ;(.lineTo ctx index h))
+
+            ;(.beginPath ctx)
+            ;(set! (.-fillStyle ctx) "#eaeaea")
+            ;(set! (.-strokeStyle ctx) "#eaeaea")
+            ;; draw highest value vertical line
+            ;(let [ratio     (/ (:count highest) max-value)
+                  ;ratio-str (str (int (* ratio 100)) "%")
+                  ;highest-w (domain-to-range [0 max-value] [sw w] (:count highest))]
+                ;(.moveTo ctx highest-w 0)
+                ;(.lineTo ctx highest-w (- h pad-h))
+                ;(.fillText ctx ratio-str (- highest-w (/ (.-width (.measureText ctx ratio-str)) 2))
+                                         ;h))
+
+            ;; draw lowest value vertical line
+            ;(.moveTo ctx (domain-to-range [0 max-value] [sw w] (:count lowest)) 0)
+            ;(.lineTo ctx (domain-to-range [0 max-value] [sw w] (:count lowest)) h)
+
+            ;(.stroke ctx)
+            ;(.closePath ctx)
+
+            (.beginPath ctx)
+            (set! (.-strokeStyle ctx) "#ddd")
+            ;; draw middle point verticle line
+            (.setLineDash ctx (array 3 2))
+            (.moveTo ctx (domain-to-range [0 max-value] [sw w] (/ max-value 4)) 0)
+            (.lineTo ctx (domain-to-range [0 max-value] [sw w] (/ max-value 4)) (- h pad-h))
+            (.stroke ctx)
+            (set! (.-fillStyle ctx) "#ddd")
+            (.fillText ctx "25%" (- (domain-to-range [0 max-value] [sw w] (/ max-value 4))
+                                    (/ (.-width (.measureText ctx "25%")) 2))
+                                 h)
+            (.closePath ctx)
+
+            (.beginPath ctx)
+            (set! (.-strokeStyle ctx) "#ddd")
+            ;; draw middle point verticle line
+            (.setLineDash ctx (array 3 2))
+            (.moveTo ctx (domain-to-range [0 max-value] [sw w] (/ max-value 2)) 0)
+            (.lineTo ctx (domain-to-range [0 max-value] [sw w] (/ max-value 2)) (- h pad-h))
+            (.stroke ctx)
+            (set! (.-fillStyle ctx) "#ddd")
+            (.fillText ctx "50%" (- (domain-to-range [0 max-value] [sw w] (/ max-value 2))
+                                    (/ (.-width (.measureText ctx "50%")) 2))
+                                 h)
+            (.closePath ctx)
+
+            (.beginPath ctx)
+            (set! (.-strokeStyle ctx) "#ddd")
+            ;; draw middle point verticle line
+            (.setLineDash ctx (array 3 2))
+            (.moveTo ctx (domain-to-range [0 max-value] [sw w] (* max-value 0.75)) 0)
+            (.lineTo ctx (domain-to-range [0 max-value] [sw w] (* max-value 0.75)) (- h pad-h))
+            (.stroke ctx)
+            (set! (.-fillStyle ctx) "#ddd")
+            (.fillText ctx "75%" (- (domain-to-range [0 max-value] [sw w] (* max-value 0.75))
+                                    (/ (.-width (.measureText ctx "75%")) 2))
+                                 h)
+            (.closePath ctx)
+
+            (.beginPath ctx)
+            (.setLineDash ctx (array 0))
+            ;(set! (.-strokeStyle ctx) "#ddd")
+            ;; draw grid
+            ;(doseq [index (range 0 h single-h)]
+            ;(.moveTo ctx sw index)
+            ;(.lineTo ctx w index)
+            ;(.moveTo ctx sw h)
+            ;(.lineTo ctx w  h)
+            ;(.stroke ctx)
+            (set! (.-fillStyle ctx) "darkblue")
+            (set! (.-strokeStyle ctx) "#fff")
+            (let [padding-h (/ single-h 7)]
+                (doseq [[value index] (map vector (:result @state) (range))]
+                    (.fillRect   ctx sw                                                      (+ (* index single-h) padding-h)
+                                 (domain-to-range [0 max-value] [0 (- w sw)] (:count value)) (- single-h (* padding-h 2)))
+                    (.strokeRect ctx sw                                                      (+ (* index single-h) padding-h)
+                                 (domain-to-range [0 max-value] [0 (- w sw)] (:count value)) (- single-h (* padding-h 2)))
+                    ))
+            (.closePath ctx)
+
+            (.beginPath ctx)
+            ;(let [font-size (* 0.35 single-h)]
+                ;(set! (.-font ctx) (str font-size "px sans-serif")))
+            ;; draw names (at each row)
+            (set! (.-fillStyle ctx) "black")
+            ;(set! (.-font-weight ctx) "bolder")
+            (doseq [[value index] (map vector (:result @state) (range))]
+                (let [mt (.measureText ctx (:name value))
+                      tw (.-width mt)]
+                    (.fillText ctx (:name value) (- w tw) (+ (* index single-h) (/ single-h 1.6)))))
+
+            ;; draw values after each bar (if possible)
+            (prn "DRAWING BOROUGH VALUES " (/ (int (first (clojure.string/split (.-font ctx) #"px"))) single-h) (.-font ctx))
+            (doseq [[value index] (map vector (:result @state) (range))]
+                (let [mt (.measureText ctx (int-comma (:count value)))
+                      tw (.-width mt)
+                      pw (domain-to-range [0 max-value] [0 (- w sw)] (:count value))
+                      nmt (.measureText ctx (int-comma (:name value)))
+                      ntw (.-width nmt)
+                      ]
+                    (if (< (+ pw tw) (- w ntw))
+                        (do (set! (.-fillStyle ctx) "#000")
+                            (.fillText ctx (int-comma (:count value)) (+ pw 5)     (+ (* index single-h) (/ single-h 1.6))))
+                        (do (set! (.-fillStyle ctx) "#fff")
+                            (.fillText ctx (int-comma (:count value)) (- pw tw 5)  (+ (* index single-h) (/ single-h 1.6)))))))
+
+            ;(.fillRect ctx 0 (* 0 single-h) (domain-to-range [0 max-value] [0 w] (:count (nth (:result @state) 0))) single-h)
+            ;(.fillRect ctx 0 (* 1 single-h) (domain-to-range [0 max-value] [0 w] (:count (nth (:result @state) 1))) single-h)
+            ;(.fillRect ctx 0 (* 2 single-h) (domain-to-range [0 max-value] [0 w] (:count (nth (:result @state) 2))) single-h)
+            (.closePath ctx)
+            )));  }}}
+(defn vertical-barchart [dom-node state];  {{{
+    (let [canvas (.-nextSibling (.-firstChild @dom-node))
+          ctx    (.getContext canvas "2d")
+          w      (.-clientWidth canvas)
+          h      (.-clientHeight canvas)
+          max-value (:filtered-result @app-state)
+          max-n     (count (:result @state))
+          single-w  (/ w max-n)]
+        (.clearRect ctx 0 0 w h)
+        (doseq [index (range 0 w single-w)]
+            (.moveTo ctx index 0)
+            (.lineTo ctx index h))
+        ;(doseq [index (range 0 h single-h)]
+            ;(.moveTo ctx 0 index)
+            ;(.lineTo ctx w index))
+        (.moveTo ctx 0 h)
+        (.lineTo ctx w h)
+        (set! (.-strokeStyle ctx) "#444")
+        (.stroke ctx)
+        (set! (.-fillStyle ctx) "darkblue")
+        (set! (.-strokeStyle ctx) "#fff")
+        (doseq [[value index] (map vector (:result @state) (range))]
+            (.fillRect   ctx (* index single-w) (- h (domain-to-range [0 max-value] [0 h] (:count value))) single-w h)
+            (.strokeRect ctx (* index single-w) (- h (domain-to-range [0 max-value] [0 h] (:count value))) single-w h)
+            )
+        ;(.fillRect ctx 0 (* 0 single-h) (domain-to-range [0 max-value] [0 w] (:count (nth (:result @state) 0))) single-h)
+        ;(.fillRect ctx 0 (* 1 single-h) (domain-to-range [0 max-value] [0 w] (:count (nth (:result @state) 1))) single-h)
+        ;(.fillRect ctx 0 (* 2 single-h) (domain-to-range [0 max-value] [0 w] (:count (nth (:result @state) 2))) single-h)
+        ));  }}}
+
+;;
+;; filtered base component
+;;
 (defn base-filtered-component [{component-name          :name;  {{{
                                 filter-state            :filter-state
                                 state                   :state
@@ -278,7 +464,8 @@
 ;; Year Component
 ;;
 (defn year-component [filter-state];  {{{
-    (let [url (str service-url "/rpc/stats_year_cached_by_filter_accidents?select=year,count")]
+    (let [dom-node (reagent/atom nil)
+          url (str service-url "/rpc/stats_year_cached_by_filter_accidents?select=year,count&order=year")]
         (base-filtered-component {:name "year-component"
                                   :filter-state filter-state
                                   :state (reagent/atom {:has-result false
@@ -290,9 +477,22 @@
                                                                            :url url
                                                                            :last-filter-state @filter-state
                                                                            :has-result true}))
+
+                                  :component-did-update
+                                  (fn [this state]
+                                      (vertical-barchart dom-node state))
+
+                                  :component-did-mount
+                                  (fn [this]
+                                      (reset! dom-node (reagent/dom-node this)))
                                   :component-render (fn [state filter-state]
-                                                        [:div
+                                                        [:div#year.with-canvas
                                                          [:h2 "Year"]
+                                                         [:canvas (if (not (:has-result @state)) {:style {:display "none"}})
+                                                          (if-let [node @dom-node]
+                                                              (do (prn "node is there!"
+                                                                       {:width (.-clientWidth node)
+                                                                        :height (.-clientHeight node)})))]
                                                          (if (:has-result @state)
                                                              [:ul
                                                               (for [item (:result @state)]
@@ -425,7 +625,6 @@
 ;;
 ;; Casualty Component
 ;;
-(defn int-comma [n] (cl-format nil "~:d" n))
 (defn casualty-component [filter-state];  {{{
     (let [url (str service-url "/rpc/stats_casualties_cached_by_filter_accidents")]
         (base-filtered-component {:name "casualty-component"
@@ -503,18 +702,6 @@
 ;;
 ;; Borough Component
 ;;
-(defn- length [[from to]]
-    (- to from))
-(defn- domain-to-range
-    "Converts a value from domain to range. In other words, maps the current state of the world
-    to what the animation's value needs to be."
-    [[domain-from domain-to :as domain] [range-from range-to :as range] domain-value]
-    (let [domain-len (length domain)
-          range-len (length range)
-          domain-offset (- domain-value domain-from)
-          ratio (/ domain-offset domain-len)
-          range-offset (* ratio range-len)]
-        (+ range-offset range-from)))
 (defn borough-component [filter-state];  {{{
     (let [dom-node (reagent/atom nil)
           url (str service-url "/rpc/stats_borough_cached_by_filter_accidents?select=name,count")]
@@ -531,36 +718,7 @@
                                                                            :has-result true}))
                                   :component-did-update
                                   (fn [this state]
-                                      (let [canvas (.-nextSibling (.-firstChild @dom-node))
-                                            ctx    (.getContext canvas "2d")
-                                            w      (.-clientWidth canvas)
-                                            h      (.-clientHeight canvas)
-                                            max-value (:filtered-result @app-state)
-                                            max-n     (count (:result @state))
-                                            single-h  (/ h max-n)]
-                                          (.clearRect ctx 0 0 w h)
-                                          (prn "domain-to-range" (domain-to-range [0 max-value] [0 500] 3000))
-                                          (prn "max-value: " max-value ", max-n: " max-n ", single-height " single-h)
-                                          ;(doseq [index (range 0 w 10)]
-                                              ;(.moveTo ctx (+ index 0.5) 0)
-                                              ;(.lineTo ctx (+ index 0.5) h))
-                                          (doseq [index (range 0 h single-h)]
-                                              (.moveTo ctx 0 (+ index 0.5))
-                                              (.lineTo ctx w (+ index 0.5)))
-                                          (.moveTo ctx 0 (- h 0.5))
-                                          (.lineTo ctx w (- h 0.5))
-                                          (set! (.-strokeStyle ctx) "#444")
-                                          (.stroke ctx)
-                                          (set! (.-fillStyle ctx) "darkblue")
-                                          (set! (.-strokeStyle ctx) "#fff")
-                                          (doseq [[value index] (map vector (:result @state) (range))]
-                                              (.fillRect ctx 0 (* index single-h) (domain-to-range [0 max-value] [0 w] (:count value)) single-h)
-                                              (.strokeRect ctx 0 (+ (* index single-h) 0.5) (domain-to-range [0 max-value] [0 w] (:count value)) (+ single-h 0.5))
-                                              )
-                                          ;(.fillRect ctx 0 (* 0 single-h) (domain-to-range [0 max-value] [0 w] (:count (nth (:result @state) 0))) single-h)
-                                          ;(.fillRect ctx 0 (* 1 single-h) (domain-to-range [0 max-value] [0 w] (:count (nth (:result @state) 1))) single-h)
-                                          ;(.fillRect ctx 0 (* 2 single-h) (domain-to-range [0 max-value] [0 w] (:count (nth (:result @state) 2))) single-h)
-                                      ))
+                                      (horizontal-barchart dom-node state))
 
                                   :component-did-mount
                                   (fn [this]
@@ -570,15 +728,16 @@
                                   (fn [state filter-state]
                                       [:div#boroughs.with-canvas
                                        [:h2 "Boroughs"]
-                                       [:canvas (if (not (:has-result @state)) {:style {:display "none"}})
+                                       [:canvas (if (not (:has-result @state))
+                                                    {:style {:display "none"}})
                                         (if-let [node @dom-node]
                                             (do (prn "node is there!"
                                                      {:width (.-clientWidth node)
                                                       :height (.-clientHeight node)})))]
-                                      (if (:has-result @state)
-                                          [:ul
-                                           (for [item (:result @state)]
-                                               ^{:key item} [:li (:name item) ": " (:count item)])])
+                                      ;(if (:has-result @state)
+                                          ;[:ul
+                                           ;(for [item (:result @state)]
+                                               ;^{:key item} [:li (:name item) ": " (:count item)])])
                                       ])})));  }}}
 
 ;;
@@ -708,8 +867,8 @@
          [autocomplete-component filter-state]
          [casualty-component filter-state]
          [borough-component filter-state]
-         [season-component filter-state]
          [year-component filter-state]
+         [season-component filter-state]
          [cluster-component filter-state]
          [month-component filter-state]
          [weekday-component filter-state]
