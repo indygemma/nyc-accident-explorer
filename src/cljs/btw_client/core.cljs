@@ -744,7 +744,8 @@
 ;; Factor Component
 ;;
 (defn factor-component [filter-state];  {{{
-    (let [url (str service-url "/rpc/stats_factors_cached_by_filter_accidents?select=name,count")]
+    (let [dom-node (reagent/atom nil)
+          url (str service-url "/rpc/stats_factors_cached_by_filter_accidents?select=name,count")]
         (base-filtered-component {:name "factor-component"
                                   :filter-state filter-state
                                   :state (reagent/atom {:has-result false
@@ -756,20 +757,37 @@
                                                                            :url url
                                                                            :last-filter-state @filter-state
                                                                            :has-result true}))
+                                  :component-did-update
+                                  (fn [this state]
+                                      (horizontal-barchart dom-node state))
+
+                                  :component-did-mount
+                                  (fn [this]
+                                      (reset! dom-node (reagent/dom-node this)))
                                   :component-render (fn [state filter-state]
-                                                        [:div
+                                                        [:div#factors.with-canvas
                                                          [:h2 "Factors"]
-                                                         (if (:has-result @state)
-                                                             [:ul
-                                                              (for [item (:result @state)]
-                                                                  ^{:key item} [:li (:name item) ": " (:count item)])])]
+                                                         [:canvas (if (not (:has-result @state))
+                                                                      {:style {:display "none"}}
+                                                                      {:width  "800px"
+                                                                       :height "1000px"})
+                                                          (if-let [node @dom-node]
+                                                              (do (prn "node is there!"
+                                                                       {:width (.-clientWidth node)
+                                                                        :height (.-clientHeight node)})))]
+                                                         ;(if (:has-result @state)
+                                                             ;[:ul
+                                                              ;(for [item (:result @state)]
+                                                                  ;^{:key item} [:li (:name item) ": " (:count item)])])
+                                                         ]
                                                         )})));  }}}
 
 ;;
 ;; Vehicle Type Component
 ;;
 (defn vehicle-type-component [filter-state];  {{{
-    (let [url (str service-url "/rpc/stats_vehicle_types_cached_by_filter_accidents?select=name,count")]
+    (let [dom-node (reagent/atom nil)
+          url (str service-url "/rpc/stats_vehicle_types_cached_by_filter_accidents?select=name,count")]
         (base-filtered-component {:name "vehicle-type-component"
                                   :filter-state filter-state
                                   :state (reagent/atom {:has-result false
@@ -781,13 +799,29 @@
                                                                            :url url
                                                                            :last-filter-state @filter-state
                                                                            :has-result true}))
+                                  :component-did-update
+                                  (fn [this state]
+                                      (horizontal-barchart dom-node state))
+
+                                  :component-did-mount
+                                  (fn [this]
+                                      (reset! dom-node (reagent/dom-node this)))
                                   :component-render (fn [state filter-state]
                                                         [:div
                                                          [:h2 "Vehicle Types"]
-                                                         (if (:has-result @state)
-                                                             [:ul
-                                                              (for [item (:result @state)]
-                                                                  ^{:key item} [:li (:name item) ": " (:count item)])])]
+                                                         [:canvas (if (not (:has-result @state))
+                                                                      {:style {:display "none"}}
+                                                                      {:width  "800px"
+                                                                       :height "1000px"})
+                                                          (if-let [node @dom-node]
+                                                              (do (prn "node is there!"
+                                                                       {:width (.-clientWidth node)
+                                                                        :height (.-clientHeight node)})))]
+                                                         ;(if (:has-result @state)
+                                                             ;[:ul
+                                                              ;(for [item (:result @state)]
+                                                                  ;^{:key item} [:li (:name item) ": " (:count item)])])
+                                                         ]
                                                         )})));  }}}
 
 (defn cluster-component [filter-state];  {{{
