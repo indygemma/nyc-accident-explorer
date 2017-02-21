@@ -3,7 +3,9 @@
                  [org.clojure/clojurescript "1.9.229"]
                  [org.clojure/core.async "0.2.395"]
                  [reagent "0.6.0"]
-                 [cljs-http "0.1.42"]]
+                 [cljs-http "0.1.42"]
+                 [rm-hull/monet "0.3.0"]
+                 ]
 
   :min-lein-version "2.5.3"
 

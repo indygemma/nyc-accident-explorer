@@ -29,35 +29,85 @@ body {
     text-align: right
 }
 
-#autocomplete-input input {
+/**
+ * Autocomplete component
+ */
+#autocomplete-input input {/* {{{*/
     padding: 8px;
     width: 98%;
     font-size: 1.3em;
     color: #ababab;
-}
-
-#autocomplete ul {
+}/* }}}*/
+#autocomplete ul {/* {{{*/
     list-style: none;
     margin: 0px;
     padding: 0px;
-}
-
-#autocomplete ul li {
+}/* }}}*/
+#autocomplete ul li {/* {{{*/
     padding: 2px;
     margin-bottom: 2px;
-}
-
-#autocomplete ul li:hover {
+}/* }}}*/
+#autocomplete ul li:hover {/* {{{*/
     background-color: yellow;
-}
-
-#autocomplete ul li span.type {
+}/* }}}*/
+#autocomplete ul li span.type {/* {{{*/
     font-size: 0.7em;
     padding: 5px;
-}
-
+}/* }}}*/
 #autocomplete ul li span.intersection { background-color: #eaeaea; }
 #autocomplete ul li span.off          { background-color: yellow; }
 #autocomplete ul li span.vehicle_type { background-color: #dddddd; }
 #autocomplete ul li span.borough      { background-color: #333; color: #fff; }
 #autocomplete ul li span.factor       { background-color: red; color: #fff; }
+
+/**
+ * Casualty Component
+ */
+#casualty-component ul {/* {{{*/
+    list-style: none;
+    margin: 0;
+    display: flex;
+}/* }}}*/
+#casualty-component li {/* {{{*/
+    margin: 5px;
+    padding: 15px;
+    /*background: yellow;*/
+    /*border: 1px dashed #eaeaea;*/
+}/* }}}*/
+#casualty-component li.total {/* {{{*/
+    color: white;
+    background: #444;
+}/* }}}*/
+#casualty-component li.persons {/* {{{*/
+    color: red;
+    background: #444;
+}/* }}}*/
+#casualty-component li.motorist {/* {{{*/
+    color: #fff;
+    background: #444;
+}/* }}}*/
+#casualty-component li.cyclist {/* {{{*/
+    color: #fff;
+    background: #444;
+}/* }}}*/
+#casualty-component li.pedestrians {/* {{{*/
+    color: yellow;
+    background: #444;
+}/* }}}*/
+#casualty-component div.label {/* {{{*/
+    margin-top: 5px;
+    font-size: 0.75em;
+    text-align: center;
+}/* }}}*/
+#casualty-component div.value {/* {{{*/
+    text-align: center;
+    font-weight: bold;
+    font-size: 2em;
+}/* }}}*/
+
+/**
+ * Active Filter Component
+ */
+#active-filters ul {
+    display: flex;
+}

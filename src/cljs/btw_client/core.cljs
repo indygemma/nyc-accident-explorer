@@ -3,7 +3,9 @@
         [reagent.core :as reagent]
         [cljs.core.async :refer [put! take! chan close! <! >! sliding-buffer]]
         [cljs-http.client :as http]
-        [goog.net.XhrIo :as xhr])
+        [goog.net.XhrIo :as xhr]
+        [cljs.pprint :refer [cl-format]]
+        )
     (:require-macros [cljs.core.async.macros :refer [go go-loop alt!]]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -93,23 +95,27 @@
           intersection2 (:intersection2 @filter-state)
           off-street    (:off-street @filter-state)
           vehicle-type  (:vehicle-type @filter-state)
-          factor        (:factor @filter-state)]
-        [:div
-         [:h5 "Active Filters"
+          factor        (:factor @filter-state)
+          cluster-key   (:cluster-id @filter-state)]
+        [:div#active-filters
+         ;[:h5 "Active Filters"
           [:ul
            (if (not (empty? borough))
                [:li [:span "Borough: "] (removable-filter filter-state :borough borough)])
-           (if (not (empty? intersection1))
-               [:li [:span "Street Intersection (1): "] (removable-filter filter-state :intersection1 intersection1)])
-           (if (not (empty? intersection2))
-               [:li [:span "Street Intersection (2): "] (removable-filter filter-state :intersection2 intersection2)])
+           (if (and (not (empty? intersection1)) (empty? intersection2))
+               [:li [:span "Street of "] (removable-filter filter-state :intersection1 intersection1)])
+           (if (and (not (empty? intersection1)) (not (empty? intersection2)))
+               [:li "Intersection at" (removable-filter filter-state :intersection1 intersection1)
+                    " and " (removable-filter filter-state :intersection2 intersection2)])
            (if (not (empty? off-street))
                [:li [:span "Off Street Address: "] (removable-filter filter-state :off-street off-street)])
            (if (not (empty? vehicle-type))
                [:li [:span "Vehicle Type: "] (removable-filter filter-state :vehicle-type vehicle-type)])
            (if (not (empty? factor))
                [:li [:span "Contributing Factor: "] (removable-filter filter-state :factor factor)])
-           ]]]));  }}}
+           (if (not (nil? cluster-key))
+               [:li [:span "Cluster ID: "] (removable-filter filter-state :cluster-id cluster-key)])
+           ]]));  }}}
 
 ;;
 ;; Auto Complete component
@@ -150,7 +156,6 @@
                             ; at this point we gain focus again. If we have a previous query, rerun it
                             (swap! state assoc :show-results true))
               :on-blur (fn [e]
-                           (prn "ac input losing focus...")
                            (swap! state assoc :has-focus false)
                            (swap! state assoc :show-results false))
               :on-key-press (fn [e]
@@ -169,11 +174,9 @@
               (for [item (:result @state)]
                   ^{:key item} [:li
                                 [:a {:on-click (fn [e]
-                                                   (prn "click!" item)
                                                    (swap! state assoc :show-results false)
                                                    (swap! state assoc :value "")
                                                    (swap! state assoc :result (list))
-                                                   (prn "changing filter state")
                                                    (add-filter filter-state item)
                                                    false)
                                      :href "#"}
@@ -192,7 +195,6 @@
                                        :result (list)})
           post-ch       (chan (sliding-buffer 1))]
         ;; setup logic (once)
-        (prn "setup go-loop")
         (go-loop []
                  (let [value (<! post-ch)
                        response (<! (http/post url {:json-params {:value value :total 10}}))]
@@ -205,19 +207,29 @@
              [autocomplete-lister filter-state input-state]
              ])));  }}}
 
-(defn base-filtered-component [{component-name       :name;  {{{
-                                filter-state         :filter-state
-                                url                  :url
-                                state                :state
-                                update-state-on-load :update-state-on-load
-                                component-fn         :render}]
+(defn base-filtered-component [{component-name          :name;  {{{
+                                filter-state            :filter-state
+                                state                   :state
+                                update-state-on-load    :update-state-on-load
+                                component-did-update-fn :component-did-update
+                                component-did-mount-fn  :component-did-mount
+                                component-render-fn     :component-render
+                                update?                 :update-condition}]
     "A base component for filtered accidents. When these filters change, these components will
      reload automatically."
-    (let [post-ch   (chan (sliding-buffer 1))]
+    (let [post-ch          (chan (sliding-buffer 1))
+          ;; component-did-update function
+          component-did-update (or component-did-update-fn (fn [this]))
+          component-did-mount  (or component-did-mount-fn (fn [this]))
+          component-render     (or component-render-fn (fn [state filter-state]
+                                                           (prn "default render logic for " component-name)))
+          ;; if no update condition function has been supplied, use default one
+          update-condition (or update? (fn [state filter-state]
+                                           (not= (:last-filter-state @state) @filter-state)))]
         ;(prn "setting up " component-name)
         (go-loop []
                  ;(prn "updateing " component-name)
-                 (let [fs (<! post-ch)
+                 (let [[url fs] (<! post-ch)
                        response (<! (http/post url {:json-params {:_borough       (:borough fs)
                                                                   :_intersection1 (:intersection1 fs)
                                                                   :_intersection2 (:intersection2 fs)
@@ -227,297 +239,393 @@
                                                                   :_cluster_key   (:cluster-id fs)}}))]
                      (update-state-on-load state filter-state (:body response))
                      (recur)))
-        (fn []
-            (if (not= (:last-filter-state @state) @filter-state)
-                (put! post-ch @filter-state)) 
-            (component-fn state filter-state))))
+        (reagent/create-class
+            {:component-did-update component-did-update
+             :component-did-mount  component-did-mount
+             :reagent-render       (fn []
+                                       (if (update-condition state filter-state)
+                                           (put! post-ch [(:url @state) @filter-state]))
+                                       (component-render state filter-state))})))
 ;  }}}
 
 ;;
 ;; Season Component
 ;;
 (defn season-component [filter-state];  {{{
-    (base-filtered-component {:name "season-component"
-                              :filter-state filter-state
-                              :url (str service-url "/rpc/stats_season_cached_by_filter_accidents?select=year,month,count&order=year,month")
-                              :state (reagent/atom {:has-result false
-                                                    :result (list)
-                                                    :last-filter-state @filter-state})
-                              :update-state-on-load (fn [state filter-state response]
-                                                        (reset! state {:result response
-                                                                       :last-filter-state @filter-state
-                                                                       :has-result true}))
-                              :render (fn [state filter-state]
-                                          [:div
-                                           [:h2 "Timeline"]
-                                           (if (:has-result @state)
-                                               [:ul
-                                                (for [item (:result @state)]
-                                                    ^{:key item} [:li (:year item) "-" (:month item) ": " (:count item)])])])}));  }}}
+    (let [url (str service-url "/rpc/stats_season_cached_by_filter_accidents?select=year,month,count&order=year,month")]
+        (base-filtered-component {:name "season-component"
+                                  :filter-state filter-state
+                                  :state (reagent/atom {:has-result false
+                                                        :url url
+                                                        :result (list)
+                                                        :last-filter-state @filter-state})
+                                  :update-state-on-load (fn [state filter-state response]
+                                                            (reset! state {:result response
+                                                                           :url url
+                                                                           :last-filter-state @filter-state
+                                                                           :has-result true}))
+                                  :component-render (fn [state filter-state]
+                                              [:div
+                                               [:h2 "Timeline"]
+                                               (if (:has-result @state)
+                                                   [:ul
+                                                    (for [item (:result @state)]
+                                                        ^{:key item} [:li (:year item) "-" (:month item) ": " (:count item)])])])})));  }}}
 
 ;;
 ;; Year Component
 ;;
 (defn year-component [filter-state];  {{{
-    (base-filtered-component {:name "year-component"
-                              :filter-state filter-state
-                              :url (str service-url "/rpc/stats_year_cached_by_filter_accidents?select=year,count")
-                              :state (reagent/atom {:has-result false
-                                                    :result (list)
-                                                    :last-filter-state @filter-state})
-                              :update-state-on-load (fn [state filter-state response]
-                                                        (reset! state {:result response
-                                                                       :last-filter-state @filter-state
-                                                                       :has-result true}))
-                              :render (fn [state filter-state]
-                                          [:div
-                                           [:h2 "Year"]
-                                           (if (:has-result @state)
-                                               [:ul
-                                                (for [item (:result @state)]
-                                                    ^{:key item} [:li (:year item) ": " (:count item)])])])}));  }}}
+    (let [url (str service-url "/rpc/stats_year_cached_by_filter_accidents?select=year,count")]
+        (base-filtered-component {:name "year-component"
+                                  :filter-state filter-state
+                                  :state (reagent/atom {:has-result false
+                                                        :url url
+                                                        :result (list)
+                                                        :last-filter-state @filter-state})
+                                  :update-state-on-load (fn [state filter-state response]
+                                                            (reset! state {:result response
+                                                                           :url url
+                                                                           :last-filter-state @filter-state
+                                                                           :has-result true}))
+                                  :component-render (fn [state filter-state]
+                                                        [:div
+                                                         [:h2 "Year"]
+                                                         (if (:has-result @state)
+                                                             [:ul
+                                                              (for [item (:result @state)]
+                                                                  ^{:key item} [:li (:year item) ": " (:count item)])])])})));  }}}
 
 ;;
 ;; Month Component
 ;;
 (defn month-component [filter-state];  {{{
-    (base-filtered-component {:name "month-component"
-                              :filter-state filter-state
-                              :url (str service-url "/rpc/stats_month_cached_by_filter_accidents?select=month,count")
-                              :state (reagent/atom {:has-result false
-                                                    :result (list)
-                                                    :last-filter-state @filter-state})
-                              :update-state-on-load (fn [state filter-state response]
-                                                        (reset! state {:result response
-                                                                       :last-filter-state @filter-state
-                                                                       :has-result true}))
-                              :render (fn [state filter-state]
-                                          [:div
-                                           [:h2 "Month"]
-                                           (if (:has-result @state)
-                                               [:ul
-                                                (for [item (:result @state)]
-                                                    ^{:key item} [:li (:month item) ": " (:count item)])])]
-                                          )}));  }}}
+    (let [url (str service-url "/rpc/stats_month_cached_by_filter_accidents?select=month,count")]
+        (base-filtered-component {:name "month-component"
+                                  :filter-state filter-state
+                                  :state (reagent/atom {:has-result false
+                                                        :url url
+                                                        :result (list)
+                                                        :last-filter-state @filter-state})
+                                  :update-state-on-load (fn [state filter-state response]
+                                                            (reset! state {:result response
+                                                                           :url url
+                                                                           :last-filter-state @filter-state
+                                                                           :has-result true}))
+                                  :component-render (fn [state filter-state]
+                                                        [:div
+                                                         [:h2 "Month"]
+                                                         (if (:has-result @state)
+                                                             [:ul
+                                                              (for [item (:result @state)]
+                                                                  ^{:key item} [:li (:month item) ": " (:count item)])])]
+                                                        )})));  }}}
 
 ;;
 ;; Weekday Component
 ;;
 (defn weekday-component [filter-state];  {{{
-    (base-filtered-component {:name "weekday-component"
-                              :filter-state filter-state
-                              :url (str service-url "/rpc/stats_weekday_cached_by_filter_accidents?select=name,count")
-                              :state (reagent/atom {:has-result false
-                                                    :result (list)
-                                                    :last-filter-state @filter-state})
-                              :update-state-on-load (fn [state filter-state response]
-                                                        (reset! state {:result response
-                                                                       :last-filter-state @filter-state
-                                                                       :has-result true}))
-                              :render (fn [state filter-state]
-                                          [:div
-                                           [:h2 "Weekday"]
-                                           (if (:has-result @state)
-                                               [:ul
-                                                (for [item (:result @state)]
-                                                    ^{:key item} [:li (:name item) ": " (:count item)])])]
-                                          )}));  }}}
+    (let [url (str service-url "/rpc/stats_weekday_cached_by_filter_accidents?select=name,count")]
+        (base-filtered-component {:name "weekday-component"
+                                  :filter-state filter-state
+                                  :state (reagent/atom {:has-result false
+                                                        :url url
+                                                        :result (list)
+                                                        :last-filter-state @filter-state})
+                                  :update-state-on-load (fn [state filter-state response]
+                                                            (reset! state {:result response
+                                                                           :url url
+                                                                           :last-filter-state @filter-state
+                                                                           :has-result true}))
+                                  :component-render (fn [state filter-state]
+                                                        [:div
+                                                         [:h2 "Weekday"]
+                                                         (if (:has-result @state)
+                                                             [:ul
+                                                              (for [item (:result @state)]
+                                                                  ^{:key item} [:li (:name item) ": " (:count item)])])]
+                                                        )})));  }}}
 
 ;;
 ;; Hour Component
 (defn hour-component [filter-state];  {{{
-    (base-filtered-component {:name "hour-component"
-                              :filter-state filter-state
-                              :url (str service-url "/rpc/stats_hour_cached_by_filter_accidents?select=hour,count")
-                              :state (reagent/atom {:has-result false
-                                                    :result (list)
-                                                    :last-filter-state @filter-state})
-                              :update-state-on-load (fn [state filter-state response]
-                                                        (reset! state {:result response
-                                                                       :last-filter-state @filter-state
-                                                                       :has-result true}))
-                              :render (fn [state filter-state]
-                                          [:div
-                                           [:h2 "Hours During the Day"]
-                                           (if (:has-result @state)
-                                               [:ul
-                                                (for [item (:result @state)]
-                                                    ^{:key item} [:li (:hour item) ": " (:count item)])])]
-                                          )}));  }}}
+    (let [url (str service-url "/rpc/stats_hour_cached_by_filter_accidents?select=hour,count")]
+        (base-filtered-component {:name "hour-component"
+                                  :filter-state filter-state
+                                  :state (reagent/atom {:has-result false
+                                                        :url url
+                                                        :result (list)
+                                                        :last-filter-state @filter-state})
+                                  :update-state-on-load (fn [state filter-state response]
+                                                            (reset! state {:result response
+                                                                           :url url
+                                                                           :last-filter-state @filter-state
+                                                                           :has-result true}))
+                                  :component-render (fn [state filter-state]
+                                                        [:div
+                                                         [:h2 "Hours During the Day"]
+                                                         (if (:has-result @state)
+                                                             [:ul
+                                                              (for [item (:result @state)]
+                                                                  ^{:key item} [:li (:hour item) ": " (:count item)])])]
+                                                        )})));  }}}
 
 ;;
 ;; Intersection Component
 ;;
 (defn intersection-component [filter-state];  {{{
-    (base-filtered-component {:name "intersection-component"
-                              :filter-state filter-state
-                              :url (str service-url "/rpc/stats_intersection_cached_by_filter_accidents?select=name,count&limit=25")
-                              :state (reagent/atom {:has-result false
-                                                    :result (list)
-                                                    :last-filter-state @filter-state})
-                              :update-state-on-load (fn [state filter-state response]
-                                                        (reset! state {:result response
-                                                                       :last-filter-state @filter-state
-                                                                       :has-result true}))
-                              :render (fn [state filter-state]
-                                          [:div
-                                           [:h2 "Related Intersections (Top 25)"]
-                                           (if (:has-result @state)
-                                               [:ul
-                                                (for [item (:result @state)]
-                                                    ^{:key item} [:li (:name item) ": " (:count item)])])]
-                                          )}));  }}}
+    (let [url (str service-url "/rpc/stats_intersection_cached_by_filter_accidents?select=name,count&limit=25")]
+        (base-filtered-component {:name "intersection-component"
+                                  :filter-state filter-state
+                                  :state (reagent/atom {:has-result false
+                                                        :url url
+                                                        :result (list)
+                                                        :last-filter-state @filter-state})
+                                  :update-state-on-load (fn [state filter-state response]
+                                                            (reset! state {:result response
+                                                                           :url url
+                                                                           :last-filter-state @filter-state
+                                                                           :has-result true}))
+                                  :component-render (fn [state filter-state]
+                                                        [:div
+                                                         [:h2 "Related Intersections (Top 25)"]
+                                                         (if (:has-result @state)
+                                                             [:ul
+                                                              (for [item (:result @state)]
+                                                                  ^{:key item} [:li (:name item) ": " (:count item)])])]
+                                                        )})));  }}}
 
 ;;
 ;; Off Street Component
 ;;
 (defn off-street-component [filter-state];  {{{
-    (base-filtered-component {:name "off-street-component"
-                              :filter-state filter-state
-                              :url (str service-url "/rpc/stats_off_street_cached_by_filter_accidents?select=name,count&limit=25")
-                              :state (reagent/atom {:has-result false
-                                                    :result (list)
-                                                    :last-filter-state @filter-state})
-                              :update-state-on-load (fn [state filter-state response]
-                                                        (prn "update off street component: " response)
-                                                        (reset! state {:result response
-                                                                       :last-filter-state @filter-state
-                                                                       :has-result true}))
-                              :render (fn [state filter-state]
-                                          (if (not (empty? (:result @state)))
-                                              [:div
-                                               [:h2 "Off Street Adresses (Top 25)"]
-                                               (if (:has-result @state)
-                                                   [:ul
-                                                    (for [item (:result @state)]
-                                                        ^{:key item} [:li (:name item) ": " (:count item)])])]))}));  }}}
+    (let [url (str service-url "/rpc/stats_off_street_cached_by_filter_accidents?select=name,count&limit=25")]
+        (base-filtered-component {:name "off-street-component"
+                                  :filter-state filter-state
+                                  :state (reagent/atom {:has-result false
+                                                        :url url
+                                                        :result (list)
+                                                        :last-filter-state @filter-state})
+                                  :update-state-on-load (fn [state filter-state response]
+                                                            (reset! state {:result response
+                                                                           :url url
+                                                                           :last-filter-state @filter-state
+                                                                           :has-result true}))
+                                  :component-render (fn [state filter-state]
+                                                        (if (not (empty? (:result @state)))
+                                                            [:div
+                                                             [:h2 "Off Street Adresses (Top 25)"]
+                                                             (if (:has-result @state)
+                                                                 [:ul
+                                                                  (for [item (:result @state)]
+                                                                      ^{:key item} [:li (:name item) ": " (:count item)])])]))})));  }}}
 
 ;;
 ;; Casualty Component
 ;;
+(defn int-comma [n] (cl-format nil "~:d" n))
 (defn casualty-component [filter-state];  {{{
-    (base-filtered-component {:name "casualty-component"
-                              :filter-state filter-state
-                              :url (str service-url "/rpc/stats_casualties_cached_by_filter_accidents")
-                              :state (reagent/atom {:count nil
-                                                    :total-number-persons-injured nil
-                                                    :total-number-persons-killed nil
-                                                    :total-number-pedestrians-injured nil
-                                                    :total-number-pedestrians-killed nil
-                                                    :total-number-cyclist-injured nil
-                                                    :total-number-cyclist-killed nil
-                                                    :total-number-motorist-injured nil
-                                                    :total-number-motorist-killed nil
-                                                    :has-result false
-                                                    :last-filter-state @filter-state})
-                              :update-state-on-load (fn [state filter-state response]
-                                                        (let [x (first response)]
-                                                            (reset! state {:count (:count x)
-                                                                           :total-number-persons-injured (:total_number_persons_injured x)
-                                                                           :total-number-persons-killed (:total_number_persons_killed x)
-                                                                           :total-number-pedestrians-injured (:total_number_pedestrians_injured x)
-                                                                           :total-number-pedestrians-killed (:total_number_pedestrians_killed x)
-                                                                           :total-number-cyclist-injured (:total_number_cyclist_injured x)
-                                                                           :total-number-cyclist-killed (:total_number_cyclist_killed x)
-                                                                           :total-number-motorist-injured (:total_number_motorist_injured x)
-                                                                           :total-number-motorist-killed (:total_number_motorist_killed x)
-                                                                           :has-result true
-                                                                           :last-filter-state @filter-state})
-                                                            ))
-                              :render (fn [state filter-state]
-                                          [:div
-                                           [:h2 "Casualties"]
-                                           (if (:has-result @state)
-                                               [:ul
-                                                [:li "Total Accident Count: " (:count @state)]
-                                                [:li "Persons Injured: " (:total-number-persons-injured @state)]
-                                                [:li "Persons Killed " (:total-number-persons-killed @state)]
-                                                [:li "Motorist Injured " (:total-number-motorist-injured @state)]
-                                                [:li "Motorist Killed " (:total-number-motorist-killed @state)]
-                                                [:li "Cyclist Injured " (:total-number-cyclist-injured @state)]
-                                                [:li "Cyclist Killed " (:total-number-cyclist-killed @state)]
-                                                [:li "Pedestrians Injured " (:total-number-pedestrians-injured @state)]
-                                                [:li "Pedestrians Killed " (:total-number-pedestrians-killed @state)]
-                                                ])]
-                                          )}));  }}}
+    (let [url (str service-url "/rpc/stats_casualties_cached_by_filter_accidents")]
+        (base-filtered-component {:name "casualty-component"
+                                  :filter-state filter-state
+                                  :state (reagent/atom {:count nil
+                                                        :total-number-persons-injured nil
+                                                        :total-number-persons-killed nil
+                                                        :total-number-pedestrians-injured nil
+                                                        :total-number-pedestrians-killed nil
+                                                        :total-number-cyclist-injured nil
+                                                        :total-number-cyclist-killed nil
+                                                        :total-number-motorist-injured nil
+                                                        :total-number-motorist-killed nil
+                                                        :has-result false
+                                                        :url url
+                                                        :last-filter-state @filter-state})
+                                  :update-state-on-load (fn [state filter-state response]
+                                                            (let [x (first response)]
+                                                                (reset! state {:count (:count x)
+                                                                               :total-number-persons-injured (:total_number_persons_injured x)
+                                                                               :total-number-persons-killed (:total_number_persons_killed x)
+                                                                               :total-number-pedestrians-injured (:total_number_pedestrians_injured x)
+                                                                               :total-number-pedestrians-killed (:total_number_pedestrians_killed x)
+                                                                               :total-number-cyclist-injured (:total_number_cyclist_injured x)
+                                                                               :total-number-cyclist-killed (:total_number_cyclist_killed x)
+                                                                               :total-number-motorist-injured (:total_number_motorist_injured x)
+                                                                               :total-number-motorist-killed (:total_number_motorist_killed x)
+                                                                               :url url
+                                                                               :has-result true
+                                                                               :last-filter-state @filter-state})
+                                                                ))
+                                  :component-render (fn [state filter-state]
+                                                        [:div#casualty-component
+                                                         ;[:h2 "Casualties"]
+                                                         (if (:has-result @state)
+                                                             [:ul
+                                                              [:li.total
+                                                               [:div.value (int-comma (:count @state))]
+                                                               [:div.label "Accidents In Total"]]
+                                                              [:li.persons
+                                                               [:div.value (int-comma (:total-number-persons-injured @state))]
+                                                               [:div.label "Persons Injured"]]
+                                                              [:li.persons
+                                                               [:div.value (int-comma (:total-number-persons-killed @state))]
+                                                               [:div.label "Persons Killed"]]
+                                                              [:li.motorist
+                                                               [:div.value (int-comma (:total-number-motorist-injured @state))]
+                                                               [:div.label "Motorist Injured"]
+                                                               ]
+                                                              [:li.motorist
+                                                               [:div.value (int-comma (:total-number-motorist-killed @state))]
+                                                               [:div.label "Motorist Killed"]
+                                                               ]
+                                                              [:li.cyclist
+                                                               [:div.value (int-comma (:total-number-cyclist-injured @state))]
+                                                               [:div.label "Cyclist Injured"]
+                                                               ]
+                                                              [:li.cyclist
+                                                               [:div.value (int-comma (:total-number-cyclist-killed @state))]
+                                                               [:div.label "Cyclist Killed"]
+                                                               ]
+                                                              [:li.pedestrians
+                                                               [:div.value (int-comma (:total-number-pedestrians-injured @state))]
+                                                               [:div.label "Pedestrians Injured"]
+                                                               ]
+                                                              [:li.pedestrians
+                                                               [:div.value (int-comma (:total-number-pedestrians-killed @state))]
+                                                               [:div.label "Pedestrians Killed"]
+                                                               ]
+                                                              ])]
+                                                        )})));  }}}
 
 ;;
 ;; Borough Component
 ;;
 (defn borough-component [filter-state];  {{{
-    (base-filtered-component {:name "borough-component"
-                              :filter-state filter-state
-                              :url (str service-url "/rpc/stats_borough_cached_by_filter_accidents?select=name,count")
-                              :state (reagent/atom {:has-result false
-                                                    :result (list)
-                                                    :last-filter-state @filter-state})
-                              :update-state-on-load (fn [state filter-state response]
-                                                        (reset! state {:result response
-                                                                       :last-filter-state @filter-state
-                                                                       :has-result true}))
-                              :render (fn [state filter-state]
-                                          [:div
-                                           [:h2 "Boroughs"]
-                                           (if (:has-result @state)
-                                               [:ul
-                                                (for [item (:result @state)]
-                                                    ^{:key item} [:li (:name item) ": " (:count item)])])]
-                                          )}));  }}}
+    (let [url (str service-url "/rpc/stats_borough_cached_by_filter_accidents?select=name,count")]
+        (base-filtered-component {:name "borough-component"
+                                  :filter-state filter-state
+                                  :state (reagent/atom {:has-result false
+                                                        :result (list)
+                                                        :url url
+                                                        :last-filter-state @filter-state})
+                                  :update-state-on-load (fn [state filter-state response]
+                                                            (reset! state {:result response
+                                                                           :url url
+                                                                           :last-filter-state @filter-state
+                                                                           :has-result true}))
+                                  :component-render (fn [state filter-state]
+                                                        [:div
+                                                         [:h2 "Boroughs"]
+                                                         (if (:has-result @state)
+                                                             [:ul
+                                                              (for [item (:result @state)]
+                                                                  ^{:key item} [:li (:name item) ": " (:count item)])])]
+                                                        )})));  }}}
 
 ;;
 ;; Factor Component
 ;;
 (defn factor-component [filter-state];  {{{
-    (base-filtered-component {:name "factor-component"
-                              :filter-state filter-state
-                              :url (str service-url "/rpc/stats_factors_cached_by_filter_accidents?select=name,count")
-                              :state (reagent/atom {:has-result false
-                                                    :result (list)
-                                                    :last-filter-state @filter-state})
-                              :update-state-on-load (fn [state filter-state response]
-                                                        (reset! state {:result response
-                                                                       :last-filter-state @filter-state
-                                                                       :has-result true}))
-                              :render (fn [state filter-state]
-                                          [:div
-                                           [:h2 "Factors"]
-                                           (if (:has-result @state)
-                                               [:ul
-                                                (for [item (:result @state)]
-                                                    ^{:key item} [:li (:name item) ": " (:count item)])])]
-                                          )}));  }}}
+    (let [url (str service-url "/rpc/stats_factors_cached_by_filter_accidents?select=name,count")]
+        (base-filtered-component {:name "factor-component"
+                                  :filter-state filter-state
+                                  :state (reagent/atom {:has-result false
+                                                        :result (list)
+                                                        :url url
+                                                        :last-filter-state @filter-state})
+                                  :update-state-on-load (fn [state filter-state response]
+                                                            (reset! state {:result response
+                                                                           :url url
+                                                                           :last-filter-state @filter-state
+                                                                           :has-result true}))
+                                  :component-render (fn [state filter-state]
+                                                        [:div
+                                                         [:h2 "Factors"]
+                                                         (if (:has-result @state)
+                                                             [:ul
+                                                              (for [item (:result @state)]
+                                                                  ^{:key item} [:li (:name item) ": " (:count item)])])]
+                                                        )})));  }}}
 
 ;;
 ;; Vehicle Type Component
 ;;
 (defn vehicle-type-component [filter-state];  {{{
-    (base-filtered-component {:name "vehicle-type-component"
-                              :filter-state filter-state
-                              :url (str service-url "/rpc/stats_vehicle_types_cached_by_filter_accidents?select=name,count")
-                              :state (reagent/atom {:has-result false
-                                                    :result (list)
-                                                    :last-filter-state @filter-state})
-                              :update-state-on-load (fn [state filter-state response]
-                                                        (reset! state {:result response
-                                                                       :last-filter-state @filter-state
-                                                                       :has-result true}))
-                              :render (fn [state filter-state]
-                                          [:div
-                                           [:h2 "Vehicle Types"]
-                                           (if (:has-result @state)
-                                               [:ul
-                                                (for [item (:result @state)]
-                                                    ^{:key item} [:li (:name item) ": " (:count item)])])]
-                                          )}));  }}}
+    (let [url (str service-url "/rpc/stats_vehicle_types_cached_by_filter_accidents?select=name,count")]
+        (base-filtered-component {:name "vehicle-type-component"
+                                  :filter-state filter-state
+                                  :state (reagent/atom {:has-result false
+                                                        :result (list)
+                                                        :url url
+                                                        :last-filter-state @filter-state})
+                                  :update-state-on-load (fn [state filter-state response]
+                                                            (reset! state {:result response
+                                                                           :url url
+                                                                           :last-filter-state @filter-state
+                                                                           :has-result true}))
+                                  :component-render (fn [state filter-state]
+                                                        [:div
+                                                         [:h2 "Vehicle Types"]
+                                                         (if (:has-result @state)
+                                                             [:ul
+                                                              (for [item (:result @state)]
+                                                                  ^{:key item} [:li (:name item) ": " (:count item)])])]
+                                                        )})));  }}}
 
-(defn cluster-component []
-    [:div#cluster
-     [:h2 "Clustering"]])
+(defn cluster-component [filter-state];  {{{
+    (let [url (str service-url "/rpc/stats_cluster_cached_by_filter_accidents?cluster_size=eq.25m&limit=10")]
+        (base-filtered-component {:name "cluster-component"
+                                  :filter-state filter-state
+                                  :state (reagent/atom {:has-result false
+                                                        :result nil
+                                                        :url (str url "&order=accident_count.desc")
+                                                        :order-by "&order=accident_count.desc"
+                                                        :last-filter-state @filter-state})
+                                  :update-state-on-load (fn [state filter-state response]
+                                                            (prn "setting url: " (str url (:order-by @state)))
+                                                            (reset! state {:result response
+                                                                           :url (str url (:order-by @state))
+                                                                           :last-filter-state @filter-state
+                                                                           :order-by (:order-by @state)
+                                                                           :has-result true}))
+                                  :component-render (fn [state filter-state]
+                                                        [:div
+                                                         [:h2 "Clusters (Top 10)"]
+                                                         [:select {:value (:order-by @state) :on-change (fn [e]
+                                                                                                            (prn "setting order-by to: " (-> e .-target .-value))
+                                                                                                            (swap! state assoc :order-by (-> e .-target .-value)))}
+                                                          [:option {:value "&order=accident_count.desc"}"by accident count"]
+                                                          [:option {:value "&order=total_number_persons_injured.desc"}"by persons injured"]
+                                                          [:option {:value "&order=total_number_persons_killed.desc"}"by persons killed"]
+                                                          [:option {:value "&order=total_number_cyclist_injured.desc"}"by cyclist injured"]
+                                                          [:option {:value "&order=total_number_cyclist_killed.desc"}"by cyclist killed"]
+                                                          [:option {:value "&order=total_number_pedestrians_injured.desc"}"by pedestrians injured"]
+                                                          [:option {:value "&order=total_number_pedestrians_killed.desc"}"by pedestrians killed"]
+                                                          [:option {:value "&order=total_number_motorist_injured.desc"}"by motorist injured"]
+                                                          [:option {:value "&order=total_number_motorist_killed.desc"}"by motorist killed"]
+                                                          ]
+                                                         (if (:has-result @state)
+                                                             [:ul
+                                                              ;{:cluster_key 1500, :cluster_number_persons_injured 252, :accident_count 275, :cluster_number_cyclist_killed 0, :total_number_cyclist_killed 0, :total_number_motorist_injured 4, :cluster_size "40m", :cluster_number_cyclist_injured 34, :total_number_pedestrians_injured 5, :total_number_persons_injured 9, :total_number_motorist_killed 0, :cluster_number_persons_killed 1, :cluster_number_motorist_injured 88, :cluster_number_motorist_killed 0, :total_number_persons_killed 0, :cluster_number_pedestrians_injured 130, :cluster_number_pedestrians_killed 1, :total_number_cyclist_injured 0, :cluster_count 2257}
+                                                              (for [item (:result @state)]
+                                                                  ^{:key item} [:li [:a {:href "#" :on-click (fn [e]
+                                                                                                                 (swap! filter-state assoc :cluster-id (:cluster_key item))
+                                                                                                                 false)}
+                                                                                     [:ul
+                                                                                      [:li "total: " (:accident_count item) "/" (:cluster_count item)]
+                                                                                      [:li "persons injured: " (:total_number_persons_injured item) "/" (:cluster_number_persons_injured item)]
+                                                                                      [:li "persons killed " (:total_number_persons_killed item) "/" (:cluster_number_persons_killed item)]
+                                                                                      [:li "pedestrians injured " (:total_number_pedestrians_injured item) "/" (:cluster_number_pedestrians_injured item)]
+                                                                                      [:li "pedestrians killed " (:total_number_pedestrians_killed item) "/" (:cluster_number_pedestrians_killed item)]
+                                                                                      [:li "cyclist injured " (:total_number_cyclist_injured item) "/" (:cluster_number_cyclist_injured item)]
+                                                                                      [:li "cyclist killed " (:total_number_cyclist_killed item) "/" (:cluster_number_cyclist_killed item)]
+                                                                                      [:li "motorist injured " (:total_number_motorist_injured item) "/" (:cluster_number_motorist_injured item)]
+                                                                                      [:li "motorist killed " (:total_number_motorist_killed item) "/" (:cluster_number_motorist_killed item)]
+                                                                                      ]]])])]
+                                                        )})));  }}}
 
 (defn setup-filter-controller [filter-state]
     "A controller responsible for actually adding new filters and triggering
     dependent components after filters have changed."
-    (prn "setting up filter controller")
     (go-loop []
              (let [[ftext ftype] (<! (:ch-in @filter-state))]
                  (cond (= ftype "intersection")
@@ -539,10 +647,10 @@
         [:div
          [autocomplete-component filter-state]
          [casualty-component filter-state]
-         [cluster-component]
          [borough-component filter-state]
          [season-component filter-state]
          [year-component filter-state]
+         [cluster-component filter-state]
          [month-component filter-state]
          [weekday-component filter-state]
          [hour-component filter-state]
