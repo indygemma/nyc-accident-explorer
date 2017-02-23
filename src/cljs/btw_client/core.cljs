@@ -229,13 +229,12 @@
           ratio (/ domain-offset domain-len)
           range-offset (* ratio range-len)]
         (+ range-offset range-from)));  }}}
-(defn horizontal-barchart [dom-node state];  {{{
+(defn horizontal-barchart [canvas state];  {{{
     (if (:has-result @state)
-        (let [canvas (.-nextSibling (.-firstChild @dom-node))
-              ctx    (.getContext canvas "2d")
-              w      (.-clientWidth canvas)
+        (let [ctx    (.getContext canvas "2d")
+              w      (- (.-clientWidth canvas) 0.5)
               pad-h  10
-              h      (- (.-clientHeight canvas) pad-h)
+              h      (- (.-clientHeight canvas) 0.5 pad-h)
               max-value (:filtered-result @app-state)
               max-n     (count (:result @state))
               ; first entry has the highest count
@@ -440,6 +439,33 @@
                                            (put! post-ch [(:url @state) @filter-state]))
                                        (component-render state filter-state))})))
 ;  }}}
+(defn canvas-base-filtered-component [{component-name          :name
+                                       filter-state            :filter-state
+                                       state                   :state
+                                       update-state-on-load    :update-state-on-load
+                                       draw-fn                 :on-draw
+                                       canvas-at               :canvas-at
+                                       component-render-fn     :component-render
+                                       update?                 :update-condition}]
+    (let [dom-node (reagent/atom nil)]
+        (base-filtered-component {:name component-name
+                                  :filter-state filter-state
+                                  :state state
+                                  :update-state-on-load update-state-on-load
+                                  :component-did-update
+                                  (fn [this state]
+                                      (draw-fn (canvas-at @dom-node) state))
+
+                                  :component-did-mount
+                                  (fn [this]
+                                      (reset! dom-node (reagent/dom-node this))
+                                      ; set default translate 0.5 0.5 for non-blurry lines
+                                      (.translate (.getContext (canvas-at (reagent/dom-node this)) "2d") 0.5 0.5))
+
+                                  :component-render (fn [state filter-state]
+                                                        (component-render-fn state filter-state @dom-node))
+                                  :update-condition update?
+                                  })))
 
 ;;
 ;; Season Component
@@ -703,50 +729,43 @@
 ;; Borough Component
 ;;
 (defn borough-component [filter-state];  {{{
-    (let [dom-node (reagent/atom nil)
-          url (str service-url "/rpc/stats_borough_cached_by_filter_accidents?select=name,count")]
-        (base-filtered-component {:name "borough-component"
-                                  :filter-state filter-state
-                                  :state (reagent/atom {:has-result false
-                                                        :result (list)
-                                                        :url url
-                                                        :last-filter-state @filter-state})
-                                  :update-state-on-load (fn [state filter-state response]
-                                                            (reset! state {:result response
-                                                                           :url url
-                                                                           :last-filter-state @filter-state
-                                                                           :has-result true}))
-                                  :component-did-update
-                                  (fn [this state]
-                                      (horizontal-barchart dom-node state))
-
-                                  :component-did-mount
-                                  (fn [this]
-                                      (reset! dom-node (reagent/dom-node this)))
-
-                                  :component-render
-                                  (fn [state filter-state]
-                                      [:div#boroughs.with-canvas
-                                       [:h2 "Boroughs"]
-                                       [:canvas (if (not (:has-result @state))
-                                                    {:style {:display "none"}})
-                                        (if-let [node @dom-node]
-                                            (do (prn "node is there!"
-                                                     {:width (.-clientWidth node)
-                                                      :height (.-clientHeight node)})))]
-                                      ;(if (:has-result @state)
-                                          ;[:ul
-                                           ;(for [item (:result @state)]
-                                               ;^{:key item} [:li (:name item) ": " (:count item)])])
-                                      ])})));  }}}
+    (let [url (str service-url "/rpc/stats_borough_cached_by_filter_accidents?select=name,count")]
+        (canvas-base-filtered-component {:name "borough-component"
+                                         :filter-state filter-state
+                                         :state (reagent/atom {:has-result false
+                                                               :result (list)
+                                                               :url url
+                                                               :last-filter-state @filter-state})
+                                         :update-state-on-load (fn [state filter-state response]
+                                                                   (reset! state {:result response
+                                                                                  :url url
+                                                                                  :last-filter-state @filter-state
+                                                                                  :has-result true}))
+                                         :on-draw horizontal-barchart
+                                         :canvas-at (fn [dom-node]
+                                                        (.-nextSibling (.-firstChild dom-node)))
+                                         :component-render
+                                         (fn [state filter-state dom-node]
+                                             [:div#boroughs.with-canvas
+                                              [:h2 "Boroughs"]
+                                              [:canvas (if (not (:has-result @state))
+                                                           {:style {:display "none"}})
+                                               (if-let [node dom-node]
+                                                   (do (prn "node is there!"
+                                                            {:width (.-clientWidth node)
+                                                             :height (.-clientHeight node)})))]
+                                              ;(if (:has-result @state)
+                                              ;[:ul
+                                              ;(for [item (:result @state)]
+                                              ;^{:key item} [:li (:name item) ": " (:count item)])])
+                                              ])})));  }}}
 
 ;;
 ;; Factor Component
 ;;
 (defn factor-component [filter-state];  {{{
-    (let [dom-node (reagent/atom nil)
-          url (str service-url "/rpc/stats_factors_cached_by_filter_accidents?select=name,count")]
-        (base-filtered-component {:name "factor-component"
+    (let [url (str service-url "/rpc/stats_factors_cached_by_filter_accidents?select=name,count")]
+        (canvas-base-filtered-component {:name "factor-component"
                                   :filter-state filter-state
                                   :state (reagent/atom {:has-result false
                                                         :result (list)
@@ -757,21 +776,17 @@
                                                                            :url url
                                                                            :last-filter-state @filter-state
                                                                            :has-result true}))
-                                  :component-did-update
-                                  (fn [this state]
-                                      (horizontal-barchart dom-node state))
-
-                                  :component-did-mount
-                                  (fn [this]
-                                      (reset! dom-node (reagent/dom-node this)))
-                                  :component-render (fn [state filter-state]
+                                  :on-draw horizontal-barchart
+                                  :canvas-at (fn [dom-node]
+                                                 (.-nextSibling (.-firstChild dom-node)))
+                                  :component-render (fn [state filter-state dom-node]
                                                         [:div#factors.with-canvas
                                                          [:h2 "Factors"]
                                                          [:canvas (if (not (:has-result @state))
                                                                       {:style {:display "none"}}
                                                                       {:width  "800px"
                                                                        :height "1000px"})
-                                                          (if-let [node @dom-node]
+                                                          (if-let [node dom-node]
                                                               (do (prn "node is there!"
                                                                        {:width (.-clientWidth node)
                                                                         :height (.-clientHeight node)})))]
@@ -786,9 +801,8 @@
 ;; Vehicle Type Component
 ;;
 (defn vehicle-type-component [filter-state];  {{{
-    (let [dom-node (reagent/atom nil)
-          url (str service-url "/rpc/stats_vehicle_types_cached_by_filter_accidents?select=name,count")]
-        (base-filtered-component {:name "vehicle-type-component"
+    (let [url (str service-url "/rpc/stats_vehicle_types_cached_by_filter_accidents?select=name,count")]
+        (canvas-base-filtered-component {:name "vehicle-type-component"
                                   :filter-state filter-state
                                   :state (reagent/atom {:has-result false
                                                         :result (list)
@@ -799,21 +813,17 @@
                                                                            :url url
                                                                            :last-filter-state @filter-state
                                                                            :has-result true}))
-                                  :component-did-update
-                                  (fn [this state]
-                                      (horizontal-barchart dom-node state))
-
-                                  :component-did-mount
-                                  (fn [this]
-                                      (reset! dom-node (reagent/dom-node this)))
-                                  :component-render (fn [state filter-state]
+                                  :on-draw horizontal-barchart
+                                  :canvas-at (fn [dom-node]
+                                                 (.-nextSibling (.-firstChild dom-node)))
+                                  :component-render (fn [state filter-state dom-node]
                                                         [:div
                                                          [:h2 "Vehicle Types"]
                                                          [:canvas (if (not (:has-result @state))
                                                                       {:style {:display "none"}}
                                                                       {:width  "800px"
                                                                        :height "1000px"})
-                                                          (if-let [node @dom-node]
+                                                          (if-let [node dom-node]
                                                               (do (prn "node is there!"
                                                                        {:width (.-clientWidth node)
                                                                         :height (.-clientHeight node)})))]
