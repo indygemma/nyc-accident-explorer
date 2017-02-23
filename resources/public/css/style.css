@@ -48,6 +48,9 @@ div.with-canvas {
 div.with-canvas canvas {
     display: block;
 }
+div.with-canvas canvas.hovered {
+    cursor: pointer;
+}
 
 /**
  * Autocomplete component

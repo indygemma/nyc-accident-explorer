@@ -229,7 +229,29 @@
           ratio (/ domain-offset domain-len)
           range-offset (* ratio range-len)]
         (+ range-offset range-from)));  }}}
-(defn horizontal-barchart [canvas state];  {{{
+;(doseq [index (range 0 w 10)]
+;(.moveTo ctx index 0)
+;(.lineTo ctx index h))
+
+;(.beginPath ctx)
+;(set! (.-fillStyle ctx) "#eaeaea")
+;(set! (.-strokeStyle ctx) "#eaeaea")
+;; draw highest value vertical line
+;(let [ratio     (/ (:count highest) max-value)
+;ratio-str (str (int (* ratio 100)) "%")
+;highest-w (domain-to-range [0 max-value] [sw w] (:count highest))]
+;(.moveTo ctx highest-w 0)
+;(.lineTo ctx highest-w (- h pad-h))
+;(.fillText ctx ratio-str (- highest-w (/ (.-width (.measureText ctx ratio-str)) 2))
+;h))
+
+;; draw lowest value vertical line
+;(.moveTo ctx (domain-to-range [0 max-value] [sw w] (:count lowest)) 0)
+;(.lineTo ctx (domain-to-range [0 max-value] [sw w] (:count lowest)) h)
+
+;(.stroke ctx)
+;(.closePath ctx)
+(defn horizontal-barchart [canvas state canvas-state];  {{{
     (if (:has-result @state)
         (let [ctx    (.getContext canvas "2d")
               w      (- (.-clientWidth canvas) 0.5)
@@ -245,33 +267,7 @@
               ;sw (+ max-text-width (/ max-text-width 10))
               sw 0
               ]
-            ;(.translate ctx 0.5 0.5) ; is it possible to do this once?
             (.clearRect ctx 0 0 w h)
-            (prn "max-text-width: " max-text-width)
-            (prn "domain-to-range" (domain-to-range [0 max-value] [sw 500] 3000))
-            (prn "max-value: " max-value ", max-n: " max-n ", single-height " single-h)
-            ;(doseq [index (range 0 w 10)]
-            ;(.moveTo ctx index 0)
-            ;(.lineTo ctx index h))
-
-            ;(.beginPath ctx)
-            ;(set! (.-fillStyle ctx) "#eaeaea")
-            ;(set! (.-strokeStyle ctx) "#eaeaea")
-            ;; draw highest value vertical line
-            ;(let [ratio     (/ (:count highest) max-value)
-                  ;ratio-str (str (int (* ratio 100)) "%")
-                  ;highest-w (domain-to-range [0 max-value] [sw w] (:count highest))]
-                ;(.moveTo ctx highest-w 0)
-                ;(.lineTo ctx highest-w (- h pad-h))
-                ;(.fillText ctx ratio-str (- highest-w (/ (.-width (.measureText ctx ratio-str)) 2))
-                                         ;h))
-
-            ;; draw lowest value vertical line
-            ;(.moveTo ctx (domain-to-range [0 max-value] [sw w] (:count lowest)) 0)
-            ;(.lineTo ctx (domain-to-range [0 max-value] [sw w] (:count lowest)) h)
-
-            ;(.stroke ctx)
-            ;(.closePath ctx)
 
             (.beginPath ctx)
             (set! (.-strokeStyle ctx) "#ddd")
@@ -283,7 +279,7 @@
             (set! (.-fillStyle ctx) "#ddd")
             (.fillText ctx "25%" (- (domain-to-range [0 max-value] [sw w] (/ max-value 4))
                                     (/ (.-width (.measureText ctx "25%")) 2))
-                                 h)
+                       h)
             (.closePath ctx)
 
             (.beginPath ctx)
@@ -296,7 +292,7 @@
             (set! (.-fillStyle ctx) "#ddd")
             (.fillText ctx "50%" (- (domain-to-range [0 max-value] [sw w] (/ max-value 2))
                                     (/ (.-width (.measureText ctx "50%")) 2))
-                                 h)
+                       h)
             (.closePath ctx)
 
             (.beginPath ctx)
@@ -309,7 +305,7 @@
             (set! (.-fillStyle ctx) "#ddd")
             (.fillText ctx "75%" (- (domain-to-range [0 max-value] [sw w] (* max-value 0.75))
                                     (/ (.-width (.measureText ctx "75%")) 2))
-                                 h)
+                       h)
             (.closePath ctx)
 
             (.beginPath ctx)
@@ -322,20 +318,30 @@
             ;(.moveTo ctx sw h)
             ;(.lineTo ctx w  h)
             ;(.stroke ctx)
-            (set! (.-fillStyle ctx) "darkblue")
+            ;(set! (.-fillStyle ctx) "darkblue")
             (set! (.-strokeStyle ctx) "#fff")
             (let [padding-h (/ single-h 7)]
                 (doseq [[value index] (map vector (:result @state) (range))]
-                    (.fillRect   ctx sw                                                      (+ (* index single-h) padding-h)
-                                 (domain-to-range [0 max-value] [0 (- w sw)] (:count value)) (- single-h (* padding-h 2)))
-                    (.strokeRect ctx sw                                                      (+ (* index single-h) padding-h)
-                                 (domain-to-range [0 max-value] [0 (- w sw)] (:count value)) (- single-h (* padding-h 2)))
-                    ))
+                    (let [x1 sw
+                          y1 (+ (* index single-h) padding-h)
+                          vw (domain-to-range [0 max-value] [0 (- w sw)] (:count value))
+                          vh (- single-h (* padding-h 2))
+                          x2 (+ x1 vw)
+                          y2 (+ y1 vh)
+                          hover? (= (:hovered-index @state) index)]
+                        (if hover?
+                            (do (set! (.-fillStyle ctx) "red"))
+                            (do (set! (.-fillStyle ctx) "darkblue")))
+                        (.fillRect ctx x1 y1 vw vh)
+                        (.strokeRect ctx x1 y1 vw vh)
+                        (swap! canvas-state assoc :positions (conj (:positions @canvas-state) [x1 y1 x2 y2]))
+                        ;(prn "canvas-state: " canvas-state)
+                    )))
             (.closePath ctx)
 
             (.beginPath ctx)
             ;(let [font-size (* 0.35 single-h)]
-                ;(set! (.-font ctx) (str font-size "px sans-serif")))
+            ;(set! (.-font ctx) (str font-size "px sans-serif")))
             ;; draw names (at each row)
             (set! (.-fillStyle ctx) "black")
             ;(set! (.-font-weight ctx) "bolder")
@@ -345,7 +351,7 @@
                     (.fillText ctx (:name value) (- w tw) (+ (* index single-h) (/ single-h 1.6)))))
 
             ;; draw values after each bar (if possible)
-            (prn "DRAWING BOROUGH VALUES " (/ (int (first (clojure.string/split (.-font ctx) #"px"))) single-h) (.-font ctx))
+            ;(prn "DRAWING BOROUGH VALUES " (/ (int (first (clojure.string/split (.-font ctx) #"px"))) single-h) (.-font ctx))
             (doseq [[value index] (map vector (:result @state) (range))]
                 (let [mt (.measureText ctx (int-comma (:count value)))
                       tw (.-width mt)
@@ -359,11 +365,7 @@
                         (do (set! (.-fillStyle ctx) "#fff")
                             (.fillText ctx (int-comma (:count value)) (- pw tw 5)  (+ (* index single-h) (/ single-h 1.6)))))))
 
-            ;(.fillRect ctx 0 (* 0 single-h) (domain-to-range [0 max-value] [0 w] (:count (nth (:result @state) 0))) single-h)
-            ;(.fillRect ctx 0 (* 1 single-h) (domain-to-range [0 max-value] [0 w] (:count (nth (:result @state) 1))) single-h)
-            ;(.fillRect ctx 0 (* 2 single-h) (domain-to-range [0 max-value] [0 w] (:count (nth (:result @state) 2))) single-h)
-            (.closePath ctx)
-            )));  }}}
+            (.closePath ctx))));  }}}
 (defn vertical-barchart [dom-node state];  {{{
     (let [canvas (.-nextSibling (.-firstChild @dom-node))
           ctx    (.getContext canvas "2d")
@@ -439,31 +441,76 @@
                                            (put! post-ch [(:url @state) @filter-state]))
                                        (component-render state filter-state))})))
 ;  }}}
+(defn- get-offsets [el offset-x offset-y]
+    (if (= (.-offsetParent el) js/undefined)
+        [offset-x offset-y]
+        (get-offsets (.-offsetParent el) (+ offset-x (.-offsetLeft el))
+                                         (+ offset-y (.-offsetTop el)))))
+(defn get-canvas-position [event canvas-state]
+    """ given a mouse event and canvas object, return the correct [x y] position """
+    (let [[offset-x offset-y] (get-offsets (:canvas @canvas-state) 0 0)
+          ox                  (+ offset-x
+                                 (:style-padding-left @canvas-state)
+                                 (:style-border-left @canvas-state)
+                                 (:html-left @canvas-state))
+          oy                  (+ offset-y
+                                 (:style-padding-top @canvas-state)
+                                 (:style-border-top @canvas-state)
+                                 (:html-top @canvas-state))]
+        [(- (.-pageX event) ox)
+         (- (.-pageY event) oy)]
+        ))
 (defn canvas-base-filtered-component [{component-name          :name
                                        filter-state            :filter-state
+                                       the-canvas-state        :canvas-state
                                        state                   :state
                                        update-state-on-load    :update-state-on-load
                                        draw-fn                 :on-draw
                                        canvas-at               :canvas-at
                                        component-render-fn     :component-render
                                        update?                 :update-condition}]
-    (let [dom-node (reagent/atom nil)]
+    (let [dom-node     (reagent/atom nil)
+          canvas-state the-canvas-state]
+        (prn component-name "on case base filtered component creation: " canvas-state)
         (base-filtered-component {:name component-name
                                   :filter-state filter-state
                                   :state state
-                                  :update-state-on-load update-state-on-load
+                                  :update-state-on-load (fn [state filter-state response]
+                                                            (update-state-on-load canvas-state state filter-state response))
                                   :component-did-update
                                   (fn [this state]
-                                      (draw-fn (canvas-at @dom-node) state))
+                                      (draw-fn (canvas-at @dom-node) state canvas-state))
 
                                   :component-did-mount
                                   (fn [this]
-                                      (reset! dom-node (reagent/dom-node this))
-                                      ; set default translate 0.5 0.5 for non-blurry lines
-                                      (.translate (.getContext (canvas-at (reagent/dom-node this)) "2d") 0.5 0.5))
+                                      (let [canvas (canvas-at (reagent/dom-node this))]
+                                          (reset! dom-node (reagent/dom-node this))
+                                          ; set default translate 0.5 0.5 for non-blurry lines
+                                          (.translate (.getContext canvas "2d") 0.5 0.5)
+                                          ; calculate once: padding and other information for accurate mouse positions )
+                                          (swap! canvas-state assoc :canvas canvas)
+                                          (swap! canvas-state assoc :style-padding-top
+                                                 (js/parseInt (.getPropertyValue (js/getComputedStyle canvas nil) "padding-top")))
+                                          (swap! canvas-state assoc :style-padding-left
+                                                 (js/parseInt (.getPropertyValue (js/getComputedStyle canvas nil) "padding-left")))
+                                          (swap! canvas-state assoc :style-border-left
+                                                 (js/parseInt (.getPropertyValue (js/getComputedStyle canvas nil) "border-left-width")))
+                                          (swap! canvas-state assoc :style-border-top
+                                                 (js/parseInt (.getPropertyValue (js/getComputedStyle canvas nil) "border-top-width")))
+                                          (swap! canvas-state assoc :style-padding-right
+                                                 (js/parseInt (.getPropertyValue (js/getComputedStyle canvas nil) "padding-right")))
+                                          (swap! canvas-state assoc :style-padding-bottom
+                                                 (js/parseInt (.getPropertyValue (js/getComputedStyle canvas nil) "padding-bottom")))
+                                          (swap! canvas-state assoc :padding-width (+ (:style-padding-left @canvas-state)
+                                                                                      (:style-padding-right @canvas-state)))
+                                          (swap! canvas-state assoc :padding-height (+ (:style-padding-top @canvas-state)
+                                                                                       (:style-padding-bottom @canvas-state)))
+                                          (swap! canvas-state assoc :html (.-parentNode (.-body js/document)))
+                                          (swap! canvas-state assoc :html-top (.-offsetTop (:html @canvas-state)))
+                                          (swap! canvas-state assoc :html-left (.-offsetLeft (:html @canvas-state)))))
 
                                   :component-render (fn [state filter-state]
-                                                        (component-render-fn state filter-state @dom-node))
+                                                        (component-render-fn state filter-state @dom-node canvas-state))
                                   :update-condition update?
                                   })))
 
@@ -519,15 +566,12 @@
                                   :component-render (fn [state filter-state]
                                                         [:div#year.with-canvas
                                                          [:h2 "Year"]
-                                                         [:canvas (if (not (:has-result @state)) {:style {:display "none"}})
-                                                          (if-let [node @dom-node]
-                                                              (do (prn "node is there!"
-                                                                       {:width (.-clientWidth node)
-                                                                        :height (.-clientHeight node)})))]
+                                                         [:canvas (if (not (:has-result @state)) {:style {:display "none"}})]
                                                          (if (:has-result @state)
                                                              [:ul
                                                               (for [item (:result @state)]
-                                                                  ^{:key item} [:li (:year item) ": " (:count item)])])])})));  }}}
+                                                                  ^{:key item} [:li (:year item) ": " (:count item)])])
+                                                         ])})));  }}}
 
 ;;
 ;; Month Component
@@ -687,7 +731,7 @@
                                                                                :has-result true
                                                                                :last-filter-state @filter-state})
                                                                 (swap! app-state assoc :filtered-result (:count x))
-                                                                ; filtered result is based on the user's casualty type selection 
+                                                                ; filtered result is based on the user's casualty type selection
                                                                 ;(swap! app-state assoc :filtered-result
                                                                        ;(case (:casualty-type @filter-state)
                                                                            ;"persons_injured" (:total-number-persons-injured @state)
@@ -740,31 +784,51 @@
 ;; Borough Component
 ;;
 (defn borough-component [filter-state];  {{{
+    ; TODO might need a separate canvas-stte here that is NOT reagent/atom but a normal atom
     (let [url (str service-url "/rpc/stats_borough_cached_by_filter_accidents?select=name,count")]
         (canvas-base-filtered-component {:name "borough-component"
                                          :filter-state filter-state
+                                         :canvas-state (atom {:hovering false
+                                                              :positions (vector)})
                                          :state (reagent/atom {:has-result false
                                                                :result (list)
                                                                :url url
                                                                :last-filter-state @filter-state})
-                                         :update-state-on-load (fn [state filter-state response]
+                                         :update-state-on-load (fn [canvas-state state filter-state response]
                                                                    (reset! state {:result response
                                                                                   :url url
                                                                                   :last-filter-state @filter-state
-                                                                                  :has-result true}))
+                                                                                  :has-result true})
+                                                                   ; reset existing shape positions
+                                                                   (swap! canvas-state assoc :positions (vector)))
                                          :on-draw horizontal-barchart
                                          :canvas-at (fn [dom-node]
                                                         (.-nextSibling (.-firstChild dom-node)))
                                          :component-render
-                                         (fn [state filter-state dom-node]
-                                             [:div#boroughs.with-canvas
+                                         (fn [state filter-state dom-node canvas-state]
+                                             [:div#boroughs.with-canvas {:on-mouse-over
+                                                                         #(swap! canvas-state assoc :hovering true)
+                                                                         :on-mouse-out
+                                                                         #(swap! canvas-state assoc :hovering false)}
                                               [:h2 "Boroughs"]
                                               [:canvas (if (not (:has-result @state))
-                                                           {:style {:display "none"}})
-                                               (if-let [node dom-node]
-                                                   (do (prn "node is there!"
-                                                            {:width (.-clientWidth node)
-                                                             :height (.-clientHeight node)})))]
+                                                           {:style {:display "none"}}
+                                                           {:on-click #(prn "test..."
+                                                                            (get-canvas-position % canvas-state)
+                                                                            (:positions @canvas-state))
+                                                            :on-mouse-move
+                                                            (fn [event]
+                                                                (let [[mx my]  (get-canvas-position event canvas-state)
+                                                                      xs       (map vector (:positions @canvas-state) (range))
+                                                                      filtered (filter (fn [[[x1 y1 x2 y2] idx]]
+                                                                                          (and (>= my y1) (<= my y2)))
+                                                                                       xs)
+                                                                      [_ idx]   (first filtered)]
+                                                                    ;(prn "setting hover to idx: " idx)
+                                                                    (swap! state assoc :hovered-index idx)))
+                                                            :on-mouse-out #(swap! state assoc :hovered-index nil)
+                                                            :class (if (nil? (:hovered-index @state)) "" "hovered")
+                                                            })]
                                               ;(if (:has-result @state)
                                               ;[:ul
                                               ;(for [item (:result @state)]
@@ -778,11 +842,13 @@
     (let [url (str service-url "/rpc/stats_factors_cached_by_filter_accidents?select=name,count")]
         (canvas-base-filtered-component {:name "factor-component"
                                   :filter-state filter-state
+                                  :canvas-state (atom {:hovering false
+                                                       :positions (vector)})
                                   :state (reagent/atom {:has-result false
                                                         :result (list)
                                                         :url url
                                                         :last-filter-state @filter-state})
-                                  :update-state-on-load (fn [state filter-state response]
+                                  :update-state-on-load (fn [canvas-state state filter-state response]
                                                             (reset! state {:result response
                                                                            :url url
                                                                            :last-filter-state @filter-state
@@ -790,17 +856,13 @@
                                   :on-draw horizontal-barchart
                                   :canvas-at (fn [dom-node]
                                                  (.-nextSibling (.-firstChild dom-node)))
-                                  :component-render (fn [state filter-state dom-node]
+                                  :component-render (fn [state filter-state dom-node canvas-state]
                                                         [:div#factors.with-canvas
                                                          [:h2 "Factors"]
                                                          [:canvas (if (not (:has-result @state))
                                                                       {:style {:display "none"}}
                                                                       {:width  "800px"
-                                                                       :height "1000px"})
-                                                          (if-let [node dom-node]
-                                                              (do (prn "node is there!"
-                                                                       {:width (.-clientWidth node)
-                                                                        :height (.-clientHeight node)})))]
+                                                                       :height "1000px"})]
                                                          ;(if (:has-result @state)
                                                              ;[:ul
                                                               ;(for [item (:result @state)]
@@ -815,11 +877,13 @@
     (let [url (str service-url "/rpc/stats_vehicle_types_cached_by_filter_accidents?select=name,count")]
         (canvas-base-filtered-component {:name "vehicle-type-component"
                                   :filter-state filter-state
+                                  :canvas-state (atom {:hovering false
+                                                       :positions (list)})
                                   :state (reagent/atom {:has-result false
-                                                        :result (list)
+                                                        :result (vector)
                                                         :url url
                                                         :last-filter-state @filter-state})
-                                  :update-state-on-load (fn [state filter-state response]
+                                  :update-state-on-load (fn [canvas-state state filter-state response]
                                                             (reset! state {:result response
                                                                            :url url
                                                                            :last-filter-state @filter-state
@@ -827,17 +891,13 @@
                                   :on-draw horizontal-barchart
                                   :canvas-at (fn [dom-node]
                                                  (.-nextSibling (.-firstChild dom-node)))
-                                  :component-render (fn [state filter-state dom-node]
+                                  :component-render (fn [state filter-state dom-node canvas-state]
                                                         [:div
                                                          [:h2 "Vehicle Types"]
                                                          [:canvas (if (not (:has-result @state))
                                                                       {:style {:display "none"}}
                                                                       {:width  "800px"
-                                                                       :height "1000px"})
-                                                          (if-let [node dom-node]
-                                                              (do (prn "node is there!"
-                                                                       {:width (.-clientWidth node)
-                                                                        :height (.-clientHeight node)})))]
+                                                                       :height "1000px"})]
                                                          ;(if (:has-result @state)
                                                              ;[:ul
                                                               ;(for [item (:result @state)]
@@ -855,7 +915,6 @@
                                                         :order-by "&order=accident_count.desc"
                                                         :last-filter-state @filter-state})
                                   :update-state-on-load (fn [state filter-state response]
-                                                            (prn "setting url: " (str url (:order-by @state)))
                                                             (reset! state {:result response
                                                                            :url (str url (:order-by @state))
                                                                            :last-filter-state @filter-state
@@ -865,7 +924,6 @@
                                                         [:div
                                                          [:h2 "Clusters (Top 10)"]
                                                          [:select {:value (:order-by @state) :on-change (fn [e]
-                                                                                                            (prn "setting order-by to: " (-> e .-target .-value))
                                                                                                             (swap! state assoc :order-by (-> e .-target .-value)))}
                                                           [:option {:value "&order=accident_count.desc"}"by accident count"]
                                                           [:option {:value "&order=total_number_persons_injured.desc"}"by persons injured"]
