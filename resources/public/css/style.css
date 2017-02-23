@@ -95,24 +95,41 @@ div.with-canvas canvas {
     /*border: 1px dashed #eaeaea;*/
 }/* }}}*/
 #casualty-component li.total {/* {{{*/
-    color: white;
     background: #444;
 }/* }}}*/
+#casualty-component li.total a {
+    color: white;
+    text-decoration: none;
+} 
 #casualty-component li.persons {/* {{{*/
-    color: red;
     background: #444;
+}/* }}}*/
+
+#casualty-component li.persons a {/* {{{*/
+    color: #fff;
+    text-decoration: none;
 }/* }}}*/
 #casualty-component li.motorist {/* {{{*/
-    color: #fff;
     background: #444;
+}/* }}}*/
+#casualty-component li.motorist a {/* {{{*/
+    color: #fff;
+    text-decoration: none;
 }/* }}}*/
 #casualty-component li.cyclist {/* {{{*/
     color: #fff;
     background: #444;
 }/* }}}*/
+#casualty-component li.cyclist a {/* {{{*/
+    color: #fff;
+    text-decoration: none;
+}/* }}}*/
 #casualty-component li.pedestrians {/* {{{*/
-    color: yellow;
     background: #444;
+}/* }}}*/
+#casualty-component li.pedestrians a {/* {{{*/
+    color: #fff;
+    text-decoration: none;
 }/* }}}*/
 #casualty-component div.label {/* {{{*/
     margin-top: 5px;

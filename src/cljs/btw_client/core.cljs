@@ -25,6 +25,7 @@
     :hello 10
     :filters {:ch-in (chan) ; channel for adding new filters
               ; the list of filters
+              :casualty-type nil
               :borough nil
               :intersection1 nil
               :intersection2 nil
@@ -93,7 +94,8 @@
          }
      value]);  }}}
 (defn active-filters-component [filter-state];  {{{
-    (let [borough       (:borough @filter-state)
+    (let [casualty-type (:casualty-type @filter-state)
+          borough       (:borough @filter-state)
           intersection1 (:intersection1 @filter-state)
           intersection2 (:intersection2 @filter-state)
           off-street    (:off-street @filter-state)
@@ -103,6 +105,8 @@
         [:div#active-filters
          ;[:h5 "Active Filters"
           [:ul
+           (if (not (empty? casualty-type))
+               [:li [:span "Casualty Type "] (removable-filter filter-state :casualty-type casualty-type)])
            (if (not (empty? borough))
                [:li [:span "Borough: "] (removable-filter filter-state :borough borough)])
            (if (and (not (empty? intersection1)) (empty? intersection2))
@@ -417,7 +421,8 @@
         (go-loop []
                  ;(prn "updateing " component-name)
                  (let [[url fs] (<! post-ch)
-                       response (<! (http/post url {:json-params {:_borough       (:borough fs)
+                       response (<! (http/post url {:json-params {:_casualty_type (:casualty-type fs)
+                                                                  :_borough       (:borough fs)
                                                                   :_intersection1 (:intersection1 fs)
                                                                   :_intersection2 (:intersection2 fs)
                                                                   :_off_street    (:off-street fs)
@@ -663,39 +668,34 @@
                                                          ;[:h2 "Casualties"]
                                                          (if (:has-result @state)
                                                              [:ul
-                                                              [:li.total
+                                                              [:li.total [:a {:href "#" :on-click #(swap! filter-state assoc :casualty-type nil)}
                                                                [:div.value (int-comma (:count @state))]
-                                                               [:div.label "Accidents In Total"]]
-                                                              [:li.persons
+                                                               [:div.label "Accidents In Total"]]]
+                                                              [:li.persons [:a {:href "#" :on-click #(swap! filter-state assoc :casualty-type "persons_injured")}
                                                                [:div.value (int-comma (:total-number-persons-injured @state))]
-                                                               [:div.label "Persons Injured"]]
-                                                              [:li.persons
+                                                               [:div.label "Persons Injured"]]]
+                                                              [:li.persons [:a {:href "#" :on-click #(swap! filter-state assoc :casualty-type "persons_killed")}
+
                                                                [:div.value (int-comma (:total-number-persons-killed @state))]
-                                                               [:div.label "Persons Killed"]]
-                                                              [:li.motorist
+                                                               [:div.label "Persons Killed"]]]
+                                                              [:li.motorist [:a {:href "#" :on-click #(swap! filter-state assoc :casualty-type "motorist_injured")}
                                                                [:div.value (int-comma (:total-number-motorist-injured @state))]
-                                                               [:div.label "Motorist Injured"]
-                                                               ]
-                                                              [:li.motorist
+                                                               [:div.label "Motorist Injured"]]]
+                                                              [:li.motorist [:a {:href "#" :on-click #(swap! filter-state assoc :casualty-type "motorist_killed")}
                                                                [:div.value (int-comma (:total-number-motorist-killed @state))]
-                                                               [:div.label "Motorist Killed"]
-                                                               ]
-                                                              [:li.cyclist
+                                                               [:div.label "Motorist Killed"]]]
+                                                              [:li.cyclist [:a {:href "#" :on-click #(swap! filter-state assoc :casualty-type "cyclist_injured")}
                                                                [:div.value (int-comma (:total-number-cyclist-injured @state))]
-                                                               [:div.label "Cyclist Injured"]
-                                                               ]
-                                                              [:li.cyclist
+                                                               [:div.label "Cyclist Injured"]]]
+                                                              [:li.cyclist [:a {:href "#" :on-click #(swap! filter-state assoc :casualty-type "cyclist_killed")}
                                                                [:div.value (int-comma (:total-number-cyclist-killed @state))]
-                                                               [:div.label "Cyclist Killed"]
-                                                               ]
-                                                              [:li.pedestrians
+                                                               [:div.label "Cyclist Killed"]]]
+                                                              [:li.pedestrians [:a {:href "#" :on-click #(swap! filter-state assoc :casualty-type "pedestrians_injured")}
                                                                [:div.value (int-comma (:total-number-pedestrians-injured @state))]
-                                                               [:div.label "Pedestrians Injured"]
-                                                               ]
-                                                              [:li.pedestrians
+                                                               [:div.label "Pedestrians Injured"]]]
+                                                              [:li.pedestrians [:a {:href "#" :on-click #(swap! filter-state assoc :casualty-type "pedestrians_killed")}
                                                                [:div.value (int-comma (:total-number-pedestrians-killed @state))]
-                                                               [:div.label "Pedestrians Killed"]
-                                                               ]
+                                                               [:div.label "Pedestrians Killed"]]]
                                                               ])]
                                                         )})));  }}}
 
