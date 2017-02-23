@@ -686,8 +686,19 @@
                                                                                :url url
                                                                                :has-result true
                                                                                :last-filter-state @filter-state})
-                                                                ; TODO this should be based on the user's selection later
                                                                 (swap! app-state assoc :filtered-result (:count x))
+                                                                ; filtered result is based on the user's casualty type selection 
+                                                                ;(swap! app-state assoc :filtered-result
+                                                                       ;(case (:casualty-type @filter-state)
+                                                                           ;"persons_injured" (:total-number-persons-injured @state)
+                                                                           ;"persons_killed"  (:total-number-persons-killed @state)
+                                                                           ;"pedestrians_injured" (:total-number-pedestrians-injured @state)
+                                                                           ;"pedestrians_killed"  (:total-number-pedestrians-killed @state)
+                                                                           ;"cyclist_injured"     (:total-number-cyclist-injured @state)
+                                                                           ;"cyclist_killed"      (:total-number-cyclist-killed @state)
+                                                                           ;"motorist_injured"    (:total-number-motorist-injured @state)
+                                                                           ;"motorist_killed"     (:total-number-motorist-killed @state)
+                                                                           ;(:count @state)))
                                                                 ))
                                   :component-render (fn [state filter-state]
                                                         [:div#casualty-component
