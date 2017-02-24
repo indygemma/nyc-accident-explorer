@@ -83,6 +83,22 @@ div.with-canvas canvas.hovered {
 #autocomplete ul li span.borough      { background-color: #333; color: #fff; }
 #autocomplete ul li span.factor       { background-color: red; color: #fff; }
 
+div.flex-row {
+  display: flex;
+}
+
+div#boroughs {
+    padding: 30px;
+}
+
+div#year {
+    padding: 30px;
+}
+
+div#month {
+    padding: 30px;
+}
+
 /**
  * Casualty Component
  */

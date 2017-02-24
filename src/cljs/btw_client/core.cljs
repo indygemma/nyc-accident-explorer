@@ -462,12 +462,12 @@
                                            (put! post-ch [(:url @state) @filter-state]))
                                        (component-render state filter-state))})))
 ;  }}}
-(defn- get-offsets [el offset-x offset-y]
+(defn- get-offsets [el offset-x offset-y];  {{{
     (if (= (.-offsetParent el) js/undefined)
         [offset-x offset-y]
         (get-offsets (.-offsetParent el) (+ offset-x (.-offsetLeft el))
-                                         (+ offset-y (.-offsetTop el)))))
-(defn get-canvas-position [event canvas-state]
+                                         (+ offset-y (.-offsetTop el)))));  }}}
+(defn get-canvas-position [event canvas-state];  {{{
     """ given a mouse event and canvas object, return the correct [x y] position """
     (let [[offset-x offset-y] (get-offsets (:canvas @canvas-state) 0 0)
           ox                  (+ offset-x
@@ -480,8 +480,8 @@
                                  (:html-top @canvas-state))]
         [(- (.-pageX event) ox)
          (- (.-pageY event) oy)]
-        ))
-(defn canvas-base-filtered-component [{component-name          :name
+        ));  }}}
+(defn canvas-base-filtered-component [{component-name          :name;  {{{
                                        filter-state            :filter-state
                                        the-canvas-state        :canvas-state
                                        state                   :state
@@ -533,7 +533,7 @@
                                   :component-render (fn [state filter-state]
                                                         (component-render-fn state filter-state @dom-node canvas-state))
                                   :update-condition update?
-                                  })))
+                                  })));  }}}
 
 ;;
 ;; Season Component
@@ -611,7 +611,7 @@
                                                                            :last-filter-state @filter-state
                                                                            :has-result true}))
                                   :component-render (fn [state filter-state]
-                                                        [:div
+                                                        [:div#month
                                                          [:h2 "Month"]
                                                          (if (:has-result @state)
                                                              [:ul
@@ -998,11 +998,13 @@
         [:div
          [autocomplete-component filter-state]
          [casualty-component filter-state]
-         [borough-component filter-state]
-         [year-component filter-state]
+         [:div.flex-row
+          [borough-component filter-state]
+          [year-component filter-state]
+          [month-component filter-state]
+          ]
          [season-component filter-state]
          [cluster-component filter-state]
-         [month-component filter-state]
          [weekday-component filter-state]
          [hour-component filter-state]
          [factor-component filter-state]
