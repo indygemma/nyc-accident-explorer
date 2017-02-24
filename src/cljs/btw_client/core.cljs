@@ -827,7 +827,9 @@
                                          :component-render
                                          (fn [state filter-state dom-node canvas-state]
                                              [:div#boroughs.with-canvas
-                                              [:h2 "Boroughs"]
+                                              [:h2 (if (:borough @filter-state)
+                                                     (str "Boroughs = " (:borough @filter-state))
+                                                     "Boroughs")]
                                               [:canvas (if (not (:has-result @state))
                                                            {:style {:display "none"}}
                                                            {:on-click (fn [e]
