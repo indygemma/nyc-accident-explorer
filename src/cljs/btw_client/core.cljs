@@ -13,11 +13,16 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Vars
 
-(defonce service-url
-    "http://localhost:3000")
+(defn service-url []
+    "http://localhost:3000"
+    )
 
 (defonce debug?
   ^boolean js/goog.DEBUG)
+
+(defn debug [& args]
+    (when debug?
+        (apply prn args)))
 
 (defonce app-state
   (reagent/atom
@@ -25,6 +30,12 @@
     :hello 10
     :filters {:ch-in (chan) ; channel for adding new filters
               ; the list of filters
+              :year1 nil
+              :month1 nil
+              :year2 nil
+              :month2 nil
+              :hour nil
+              :weekday nil
               :casualty-type nil
               :borough nil
               :intersection1 nil
@@ -88,7 +99,7 @@
 (defn removable-filter [filter-state filter-type value];  {{{
     [:a {:href "#"
          :on-click (fn [e]
-                       ;(prn "Removing filter: " value)
+                       ;(debug "Removing filter: " value)
                        (swap! filter-state assoc filter-type nil)
                        false)
          }
@@ -141,7 +152,7 @@
               (swap! filter-state assoc :vehicle-type (:result item))
               (= t "factor")
               (swap! filter-state assoc :factor (:result item))
-              :else (prn "Unknown type: " t))));  }}}
+              :else (debug "Unknown type: " t))));  }}}
 (defn autocomplete-input [filter-state post-ch default-value state];  {{{
     (if (and (clojure.string/blank? (:value @state))
              (not (:has-focus @state)))
@@ -194,7 +205,7 @@
          ]))
 ;  }}}
 (defn autocomplete-component [filter-state];  {{{
-    (let [url           (str service-url "/rpc/autocomplete_all")
+    (let [url           (str (service-url) "/rpc/autocomplete_all")
           default-value "Filter accidents by typing here..."
           input-state   (reagent/atom {:value ""
                                        :has-focus false
@@ -335,7 +346,7 @@
                         (.fillRect ctx x1 y1 vw vh)
                         (.strokeRect ctx x1 y1 vw vh)
                         (swap! canvas-state assoc :positions (conj (:positions @canvas-state) [x1 y1 x2 y2]))
-                        ;(prn "canvas-state: " canvas-state)
+                        ;(debug "canvas-state: " canvas-state)
                     )))
             (.closePath ctx)
 
@@ -351,7 +362,7 @@
                     (.fillText ctx (:name value) (- w tw) (+ (* index single-h) (/ single-h 1.6)))))
 
             ;; draw values after each bar (if possible)
-            ;(prn "DRAWING BOROUGH VALUES " (/ (int (first (clojure.string/split (.-font ctx) #"px"))) single-h) (.-font ctx))
+            ;(debug "DRAWING BOROUGH VALUES " (/ (int (first (clojure.string/split (.-font ctx) #"px"))) single-h) (.-font ctx))
             (doseq [[value index] (map vector (:result @state) (range))]
                 (let [mt (.measureText ctx (int-comma (:count value)))
                       tw (.-width mt)
@@ -414,15 +425,21 @@
           component-did-update (or component-did-update-fn (fn [this state]))
           component-did-mount  (or component-did-mount-fn (fn [this]))
           component-render     (or component-render-fn (fn [state filter-state]
-                                                           (prn "default render logic for " component-name)))
+                                                           (debug "default render logic for " component-name)))
           ;; if no update condition function has been supplied, use default one
           update-condition (or update? (fn [state filter-state]
                                            (not= (:last-filter-state @state) @filter-state)))]
-        ;(prn "setting up " component-name)
+        ;(debug "setting up " component-name)
         (go-loop []
-                 ;(prn "updateing " component-name)
+                 ;(debug "updateing " component-name)
                  (let [[url fs] (<! post-ch)
-                       response (<! (http/post url {:json-params {:_casualty_type (:casualty-type fs)
+                       response (<! (http/post url {:json-params {:_year1         (:year1 fs)
+                                                                  :_month1        (:month1 fs)
+                                                                  :_year2         (:year2 fs)
+                                                                  :_month2        (:month2 fs)
+                                                                  :_hour          (:hour fs)
+                                                                  :_weekday       (:weekday fs)
+                                                                  :_casualty_type (:casualty-type fs)
                                                                   :_borough       (:borough fs)
                                                                   :_intersection1 (:intersection1 fs)
                                                                   :_intersection2 (:intersection2 fs)
@@ -471,7 +488,7 @@
                                        update?                 :update-condition}]
     (let [dom-node     (reagent/atom nil)
           canvas-state the-canvas-state]
-        (prn component-name "on case base filtered component creation: " canvas-state)
+        (debug component-name "on case base filtered component creation: " canvas-state)
         (base-filtered-component {:name component-name
                                   :filter-state filter-state
                                   :state state
@@ -518,7 +535,7 @@
 ;; Season Component
 ;;
 (defn season-component [filter-state];  {{{
-    (let [url (str service-url "/rpc/stats_season_cached_by_filter_accidents?select=year,month,count&order=year,month")]
+    (let [url (str (service-url) "/rpc/stats_season_cached_by_filter_accidents?select=year,month,count&order=year,month")]
         (base-filtered-component {:name "season-component"
                                   :filter-state filter-state
                                   :state (reagent/atom {:has-result false
@@ -543,7 +560,7 @@
 ;;
 (defn year-component [filter-state];  {{{
     (let [dom-node (reagent/atom nil)
-          url (str service-url "/rpc/stats_year_cached_by_filter_accidents?select=year,count&order=year")]
+          url (str (service-url) "/rpc/stats_year_cached_by_filter_accidents?select=year,count&order=year")]
         (base-filtered-component {:name "year-component"
                                   :filter-state filter-state
                                   :state (reagent/atom {:has-result false
@@ -577,7 +594,7 @@
 ;; Month Component
 ;;
 (defn month-component [filter-state];  {{{
-    (let [url (str service-url "/rpc/stats_month_cached_by_filter_accidents?select=month,count")]
+    (let [url (str (service-url) "/rpc/stats_month_cached_by_filter_accidents?select=month,count")]
         (base-filtered-component {:name "month-component"
                                   :filter-state filter-state
                                   :state (reagent/atom {:has-result false
@@ -602,7 +619,7 @@
 ;; Weekday Component
 ;;
 (defn weekday-component [filter-state];  {{{
-    (let [url (str service-url "/rpc/stats_weekday_cached_by_filter_accidents?select=name,count")]
+    (let [url (str (service-url) "/rpc/stats_weekday_cached_by_filter_accidents?select=name,count")]
         (base-filtered-component {:name "weekday-component"
                                   :filter-state filter-state
                                   :state (reagent/atom {:has-result false
@@ -626,7 +643,7 @@
 ;;
 ;; Hour Component
 (defn hour-component [filter-state];  {{{
-    (let [url (str service-url "/rpc/stats_hour_cached_by_filter_accidents?select=hour,count")]
+    (let [url (str (service-url) "/rpc/stats_hour_cached_by_filter_accidents?select=hour,count")]
         (base-filtered-component {:name "hour-component"
                                   :filter-state filter-state
                                   :state (reagent/atom {:has-result false
@@ -651,7 +668,7 @@
 ;; Intersection Component
 ;;
 (defn intersection-component [filter-state];  {{{
-    (let [url (str service-url "/rpc/stats_intersection_cached_by_filter_accidents?select=name,count&limit=25")]
+    (let [url (str (service-url) "/rpc/stats_intersection_cached_by_filter_accidents?select=name,count&limit=25")]
         (base-filtered-component {:name "intersection-component"
                                   :filter-state filter-state
                                   :state (reagent/atom {:has-result false
@@ -676,7 +693,7 @@
 ;; Off Street Component
 ;;
 (defn off-street-component [filter-state];  {{{
-    (let [url (str service-url "/rpc/stats_off_street_cached_by_filter_accidents?select=name,count&limit=25")]
+    (let [url (str (service-url) "/rpc/stats_off_street_cached_by_filter_accidents?select=name,count&limit=25")]
         (base-filtered-component {:name "off-street-component"
                                   :filter-state filter-state
                                   :state (reagent/atom {:has-result false
@@ -701,7 +718,7 @@
 ;; Casualty Component
 ;;
 (defn casualty-component [filter-state];  {{{
-    (let [url (str service-url "/rpc/stats_casualties_cached_by_filter_accidents")]
+    (let [url (str (service-url) "/rpc/stats_casualties_cached_by_filter_accidents")]
         (base-filtered-component {:name "casualty-component"
                                   :filter-state filter-state
                                   :state (reagent/atom {:count nil
@@ -785,7 +802,7 @@
 ;;
 (defn borough-component [filter-state];  {{{
     ; TODO might need a separate canvas-stte here that is NOT reagent/atom but a normal atom
-    (let [url (str service-url "/rpc/stats_borough_cached_by_filter_accidents?select=name,count")]
+    (let [url (str (service-url) "/rpc/stats_borough_cached_by_filter_accidents?select=name,count")]
         (canvas-base-filtered-component {:name "borough-component"
                                          :filter-state filter-state
                                          :canvas-state (atom {:hovering false
@@ -813,7 +830,7 @@
                                               [:h2 "Boroughs"]
                                               [:canvas (if (not (:has-result @state))
                                                            {:style {:display "none"}}
-                                                           {:on-click #(prn "test..."
+                                                           {:on-click #(debug "test..."
                                                                             (get-canvas-position % canvas-state)
                                                                             (:positions @canvas-state))
                                                             :on-mouse-move
@@ -824,7 +841,7 @@
                                                                                           (and (>= my y1) (<= my y2)))
                                                                                        xs)
                                                                       [_ idx]   (first filtered)]
-                                                                    ;(prn "setting hover to idx: " idx)
+                                                                    ;(debug "setting hover to idx: " idx)
                                                                     (swap! state assoc :hovered-index idx)))
                                                             :on-mouse-out #(swap! state assoc :hovered-index nil)
                                                             :class (if (nil? (:hovered-index @state)) "" "hovered")
@@ -839,7 +856,7 @@
 ;; Factor Component
 ;;
 (defn factor-component [filter-state];  {{{
-    (let [url (str service-url "/rpc/stats_factors_cached_by_filter_accidents?select=name,count")]
+    (let [url (str (service-url) "/rpc/stats_factors_cached_by_filter_accidents?select=name,count")]
         (canvas-base-filtered-component {:name "factor-component"
                                   :filter-state filter-state
                                   :canvas-state (atom {:hovering false
@@ -874,7 +891,7 @@
 ;; Vehicle Type Component
 ;;
 (defn vehicle-type-component [filter-state];  {{{
-    (let [url (str service-url "/rpc/stats_vehicle_types_cached_by_filter_accidents?select=name,count")]
+    (let [url (str (service-url) "/rpc/stats_vehicle_types_cached_by_filter_accidents?select=name,count")]
         (canvas-base-filtered-component {:name "vehicle-type-component"
                                   :filter-state filter-state
                                   :canvas-state (atom {:hovering false
@@ -906,7 +923,7 @@
                                                         )})));  }}}
 
 (defn cluster-component [filter-state];  {{{
-    (let [url (str service-url "/rpc/stats_cluster_cached_by_filter_accidents?cluster_size=eq.25m&limit=10")]
+    (let [url (str (service-url) "/rpc/stats_cluster_cached_by_filter_accidents?cluster_size=eq.25m&limit=10")]
         (base-filtered-component {:name "cluster-component"
                                   :filter-state filter-state
                                   :state (reagent/atom {:has-result false
@@ -961,17 +978,17 @@
     (go-loop []
              (let [[ftext ftype] (<! (:ch-in @filter-state))]
                  (cond (= ftype "intersection")
-                       (prn "handle intersection!")
+                       (debug "handle intersection!")
                        (= ftype "off street")
-                       (prn "handle off street")
+                       (debug "handle off street")
                        (= ftype "factor")
-                       (prn "handle factor")
+                       (debug "handle factor")
                        (= ftype "borough")
-                       (prn "handle borough")
+                       (debug "handle borough")
                        (= ftype "vehicle_type")
-                       (prn "handle vehicle type")
-                       :else (prn "Unknown filter: " ftype))
-                 (prn {:text ftext :type ftype} " in controller!")
+                       (debug "handle vehicle type")
+                       :else (debug "Unknown filter: " ftype))
+                 (debug {:text ftext :type ftype} " in controller!")
                  (recur))))
 
 (defn body-component [state]
