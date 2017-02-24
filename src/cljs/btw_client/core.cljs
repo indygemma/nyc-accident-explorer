@@ -8,6 +8,8 @@
         )
     (:require-macros [cljs.core.async.macros :refer [go go-loop alt!]]))
 
+(enable-console-print!)
+
 (defn int-comma [n] (cl-format nil "~:d" n))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -22,7 +24,7 @@
 
 (defn debug [& args]
     (when debug?
-        (apply prn args)))
+      apply prn args))
 
 (defonce app-state
   (reagent/atom
@@ -1029,12 +1031,11 @@
 
 (defn dev-setup []
   (when debug?
-    (enable-console-print!)
-    (println "dev mode")
+    ;(enable-console-print!)
+    ;(println "dev mode")
     ))
 
 (defn reload []
-  ; TODO how to integrate these channels inside the components?
   (reagent/render [page app-state]
                   (.getElementById js/document "app")))
 
