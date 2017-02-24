@@ -14,7 +14,7 @@
 ;; Vars
 
 (defn service-url []
-    "http://localhost:3000"
+    "http://btw.lab.indygemma.com/pgrest"
     )
 
 (defonce debug?
@@ -805,8 +805,7 @@
     (let [url (str (service-url) "/rpc/stats_borough_cached_by_filter_accidents?select=name,count")]
         (canvas-base-filtered-component {:name "borough-component"
                                          :filter-state filter-state
-                                         :canvas-state (atom {:hovering false
-                                                              :positions (vector)})
+                                         :canvas-state (atom {:positions (vector)})
                                          :state (reagent/atom {:has-result false
                                                                :result (list)
                                                                :url url
@@ -823,16 +822,17 @@
                                                         (.-nextSibling (.-firstChild dom-node)))
                                          :component-render
                                          (fn [state filter-state dom-node canvas-state]
-                                             [:div#boroughs.with-canvas {:on-mouse-over
-                                                                         #(swap! canvas-state assoc :hovering true)
-                                                                         :on-mouse-out
-                                                                         #(swap! canvas-state assoc :hovering false)}
+                                             [:div#boroughs.with-canvas
                                               [:h2 "Boroughs"]
                                               [:canvas (if (not (:has-result @state))
                                                            {:style {:display "none"}}
-                                                           {:on-click #(debug "test..."
-                                                                            (get-canvas-position % canvas-state)
-                                                                            (:positions @canvas-state))
+                                                           {:on-click (fn [e]
+                                                                          (let [idx (:hovered-index @state)]
+                                                                              (debug "hovered index: " idx (not (nil? idx))
+                                                                                     (nth (:result @state) idx))
+                                                                              (if (not (nil? idx))
+                                                                                  (let [item (nth (:result @state) idx)]
+                                                                                      (swap! filter-state assoc :borough (:name item))))))
                                                             :on-mouse-move
                                                             (fn [event]
                                                                 (let [[mx my]  (get-canvas-position event canvas-state)

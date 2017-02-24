@@ -144,6 +144,10 @@ div.with-canvas canvas.hovered {
     font-weight: bold;
     font-size: 2em;
 }/* }}}*/
+#casualty-component li > a:hover {/* {{{*/
+    color: yellow;
+    text-decoration: none;
+}/* }}}*/
 
 /**
  * Active Filter Component
