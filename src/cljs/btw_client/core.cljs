@@ -263,7 +263,7 @@
 
 ;(.stroke ctx)
 ;(.closePath ctx)
-(defn horizontal-barchart [canvas state canvas-state];  {{{
+(defn horizontal-barchart [draw-opts canvas state canvas-state];  {{{
     (if (:has-result @state)
         (let [ctx    (.getContext canvas "2d")
               w      (- (.-clientWidth canvas) 0.5)
@@ -280,6 +280,9 @@
               sw 0
               ]
             (.clearRect ctx 0 0 w h)
+
+            ; set font size for the grid labels
+            (set! (.-font ctx) (str "10px sans-serif"))
 
             (.beginPath ctx)
             (set! (.-strokeStyle ctx) "#ddd")
@@ -352,8 +355,8 @@
             (.closePath ctx)
 
             (.beginPath ctx)
-            ;(let [font-size (* 0.35 single-h)]
-            ;(set! (.-font ctx) (str font-size "px sans-serif")))
+            (let [font-size (* 0.35 single-h)]
+            (set! (.-font ctx) (str font-size "px sans-serif")))
             ;; draw names (at each row)
             (set! (.-fillStyle ctx) "black")
             ;(set! (.-font-weight ctx) "bolder")
@@ -487,6 +490,7 @@
                                        state                   :state
                                        update-state-on-load    :update-state-on-load
                                        draw-fn                 :on-draw
+                                       draw-options            :draw-options
                                        canvas-at               :canvas-at
                                        component-render-fn     :component-render
                                        update?                 :update-condition}]
@@ -500,7 +504,7 @@
                                                             (update-state-on-load canvas-state state filter-state response))
                                   :component-did-update
                                   (fn [this state]
-                                      (draw-fn (canvas-at @dom-node) state canvas-state))
+                                      (draw-fn draw-options (canvas-at @dom-node) state canvas-state))
 
                                   :component-did-mount
                                   (fn [this]
