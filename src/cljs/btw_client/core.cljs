@@ -942,18 +942,18 @@
                                   :component-render (fn [state filter-state]
                                                         [:div
                                                          [:h2 "Clusters (Top 10)"]
-                                                         [:select {:value (:order-by @state) :on-change (fn [e]
-                                                                                                            (swap! state assoc :order-by (-> e .-target .-value)))}
-                                                          [:option {:value "&order=accident_count.desc"}"by accident count"]
-                                                          [:option {:value "&order=total_number_persons_injured.desc"}"by persons injured"]
-                                                          [:option {:value "&order=total_number_persons_killed.desc"}"by persons killed"]
-                                                          [:option {:value "&order=total_number_cyclist_injured.desc"}"by cyclist injured"]
-                                                          [:option {:value "&order=total_number_cyclist_killed.desc"}"by cyclist killed"]
-                                                          [:option {:value "&order=total_number_pedestrians_injured.desc"}"by pedestrians injured"]
-                                                          [:option {:value "&order=total_number_pedestrians_killed.desc"}"by pedestrians killed"]
-                                                          [:option {:value "&order=total_number_motorist_injured.desc"}"by motorist injured"]
-                                                          [:option {:value "&order=total_number_motorist_killed.desc"}"by motorist killed"]
-                                                          ]
+                                                         ;[:select {:value (:order-by @state) :on-change (fn [e]
+                                                                                                            ;(swap! state assoc :order-by (-> e .-target .-value)))}
+                                                          ;[:option {:value "&order=accident_count.desc"}"by accident count"]
+                                                          ;[:option {:value "&order=total_number_persons_injured.desc"}"by persons injured"]
+                                                          ;[:option {:value "&order=total_number_persons_killed.desc"}"by persons killed"]
+                                                          ;[:option {:value "&order=total_number_cyclist_injured.desc"}"by cyclist injured"]
+                                                          ;[:option {:value "&order=total_number_cyclist_killed.desc"}"by cyclist killed"]
+                                                          ;[:option {:value "&order=total_number_pedestrians_injured.desc"}"by pedestrians injured"]
+                                                          ;[:option {:value "&order=total_number_pedestrians_killed.desc"}"by pedestrians killed"]
+                                                          ;[:option {:value "&order=total_number_motorist_injured.desc"}"by motorist injured"]
+                                                          ;[:option {:value "&order=total_number_motorist_killed.desc"}"by motorist killed"]
+                                                          ;]
                                                          (if (:has-result @state)
                                                              [:ul
                                                               ;{:cluster_key 1500, :cluster_number_persons_injured 252, :accident_count 275, :cluster_number_cyclist_killed 0, :total_number_cyclist_killed 0, :total_number_motorist_injured 4, :cluster_size "40m", :cluster_number_cyclist_injured 34, :total_number_pedestrians_injured 5, :total_number_persons_injured 9, :total_number_motorist_killed 0, :cluster_number_persons_killed 1, :cluster_number_motorist_injured 88, :cluster_number_motorist_killed 0, :total_number_persons_killed 0, :cluster_number_pedestrians_injured 130, :cluster_number_pedestrians_killed 1, :total_number_cyclist_injured 0, :cluster_count 2257}
