@@ -30,8 +30,7 @@
   (reagent/atom
    {:text "This is the initial text "
     :hello 10
-    :filters {:ch-in (chan) ; channel for adding new filters
-              ; the list of filters
+    :filters {; the list of filters
               :year1 nil
               :month1 nil
               :year2 nil
@@ -454,7 +453,10 @@
         (reagent/create-class
             {:component-did-update (fn [this]
                                        (component-did-update this state))
-             :component-did-mount  component-did-mount
+             :component-did-mount  (fn [this]
+                                     ; initially, we will load whatever is active filter right now
+                                     (put! post-ch [(:url @state) @filter-state])
+                                     (component-did-mount this))
              :reagent-render       (fn []
                                        (if (update-condition state filter-state)
                                            (put! post-ch [(:url @state) @filter-state]))
@@ -830,8 +832,6 @@
                                                            {:style {:display "none"}}
                                                            {:on-click (fn [e]
                                                                           (let [idx (:hovered-index @state)]
-                                                                              (debug "hovered index: " idx (not (nil? idx))
-                                                                                     (nth (:result @state) idx))
                                                                               (if (not (nil? idx))
                                                                                   (let [item (nth (:result @state) idx)]
                                                                                       (swap! filter-state assoc :borough (:name item))))))
@@ -1019,7 +1019,6 @@
     [:p "This is the footer"]]])
 
 (defn page [state]
-    (setup-filter-controller (reagent/cursor state [:filters]))
     (fn []
         [:div
          [header-component]
