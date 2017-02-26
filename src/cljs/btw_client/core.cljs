@@ -241,28 +241,268 @@
           ratio (/ domain-offset domain-len)
           range-offset (* ratio range-len)]
         (+ range-offset range-from)));  }}}
-;(doseq [index (range 0 w 10)]
-;(.moveTo ctx index 0)
-;(.lineTo ctx index h))
 
-;(.beginPath ctx)
-;(set! (.-fillStyle ctx) "#eaeaea")
-;(set! (.-strokeStyle ctx) "#eaeaea")
-;; draw highest value vertical line
-;(let [ratio     (/ (:count highest) max-value)
-;ratio-str (str (int (* ratio 100)) "%")
-;highest-w (domain-to-range [0 max-value] [sw w] (:count highest))]
-;(.moveTo ctx highest-w 0)
-;(.lineTo ctx highest-w (- h pad-h))
-;(.fillText ctx ratio-str (- highest-w (/ (.-width (.measureText ctx ratio-str)) 2))
-;h))
+(defn calculate-horizontal-layer-positions [layer-name canvas layer-opts state result];  {{{
+  (let [w (:canvas-width result)
+        h (:canvas-height result)
+        n (count (:result @state))
+        ; (1) calculate element width (because of horizontal)
+        f (:max-element-width layer-opts)
+        max-el-w (apply f [canvas state])
+        ; (2) calculate element height
+        tl-y      (:t (:area-padding layer-opts))
+        bl-y (- h (:b (:area-padding layer-opts)))
+        el-h (/ (- bl-y tl-y) n)
+        ; (3) element stats
+        el-w (+ (apply (:l (:element-padding layer-opts)) [max-el-w])
+                max-el-w
+                (apply (:r (:element-padding layer-opts)) [max-el-w]))
+        el-tl-x (apply (:l (:element-padding layer-opts)) [max-el-w])
+        el-tl-y (apply (:t (:element-padding layer-opts)) [el-h])
+        el-bl-x el-tl-x
+        el-bl-y (- el-h (apply (:b (:element-padding layer-opts)) [el-h]))
+        el-tr-x (- el-w (apply (:r (:element-padding layer-opts)) [max-el-w]))
+        el-tr-y el-tl-y
+        el-br-x el-tr-x
+        el-br-y el-bl-y
+        ; (4) calculate area padded positions
+        tl-x (apply (:l (:area-padding layer-opts)) [result el-w])
+        bl-x tl-x
+        tr-x (- w (apply (:r (:area-padding layer-opts)) [result el-w]))
+        tr-y tl-y
+        br-x tr-x
+        br-y bl-y
+        x (- w tl-x)
+        y tl-y]
+    ;(prn "max element width: " max-el-w)
+    ;(prn "element height: " el-h)
+    ;(prn "total element width (incl. padding): " el-w)
+    ;(prn "el stats: [tl.x,tl.y] " [el-tl-x el-tl-y])
+    ;(prn "el stats: [bl.x,bl.y] " [el-bl-x el-bl-y])
+    ;(prn "el stats: [tr.x,tr.y] " [el-tr-x el-tr-y])
+    ;(prn "el stats: [br.x,br.y] " [el-br-x el-br-y])
+    ;(prn "area stats: [tl.x,tl.y] " [tl-x tl-y])
+    ;(prn "area stats: [tr.x,tr.y] " [tr-x tr-y])
+    ;(prn "area stats: [bl.x,bl.y] " [bl-x bl-y])
+    ;(prn "area stats: [br.x,br.y] " [br-x br-y])
+    (assoc result layer-name
+           {:x x
+            :y y
+            :tl-x tl-x
+            :tl-y tl-y
+            :tr-x tr-x
+            :tr-y tr-y
+            :bl-x bl-x
+            :bl-y bl-y
+            :br-x br-x
+            :br-y br-y
+            :el-tl-x el-tl-x
+            :el-tl-y el-tl-y
+            :el-tr-x el-tr-x
+            :el-tr-y el-tr-y
+            :el-bl-x el-bl-x
+            :el-bl-y el-bl-y
+            :el-br-x el-br-x
+            :el-br-y el-br-y
+            :el-w el-w
+            :el-h el-h
+            :max-el-w max-el-w
+            })));  }}}
+(defn calculate-vertical-layer-positions [layer-name canvas layer-opts state result];  {{{
+  (let [w (:canvas-width result)
+        h (:canvas-height result)
+        n (count (:result @state))
+        ; (1) calculate element height (by using the width-length of the max element)
+        f (:max-element-width layer-opts)
+        max-el-w (apply f [canvas state])
+        ; (2) calculate static element width
+        tl-x      (:l (:area-padding layer-opts))
+        tr-x (- w (:r (:area-padding layer-opts)))
+        el-w (/ (- tr-x tl-x) n)
+        ; (3) element stats
+        el-h (+ (apply (:t (:element-padding layer-opts)) [max-el-w])
+                max-el-w
+                (apply (:b (:element-padding layer-opts)) [max-el-w]))
+        el-tl-x (apply (:l (:element-padding layer-opts)) [el-w])
+        el-tl-y (apply (:t (:element-padding layer-opts)) [el-h])
+        el-bl-x el-tl-x
+        el-bl-y (- el-h (apply (:b (:element-padding layer-opts)) [el-h]))
+        el-tr-x (- el-w (apply (:r (:element-padding layer-opts)) [el-w]))
+        el-tr-y el-tl-y
+        el-br-x el-tr-x
+        el-br-y el-bl-y
+        ; (4) calculate area padded positions
+        bl-x tl-x
+        br-x tr-x
+        tl-y      (apply (:t (:area-padding layer-opts)) [result el-h])
+        bl-y (- h (apply (:b (:area-padding layer-opts)) [result el-h]))
+        tr-y tl-y
+        br-y bl-y
+        x (- w tl-x)
+        y tl-y]
+    ;(prn "max element width: " max-el-w)
+    ;(prn "element height: " el-h)
+    ;(prn "total element width (incl. padding): " el-w)
+    ;(prn "el stats: [tl.x,tl.y] " [el-tl-x el-tl-y])
+    ;(prn "el stats: [bl.x,bl.y] " [el-bl-x el-bl-y])
+    ;(prn "el stats: [tr.x,tr.y] " [el-tr-x el-tr-y])
+    ;(prn "el stats: [br.x,br.y] " [el-br-x el-br-y])
+    ;(prn "area stats: [tl.x,tl.y] " [tl-x tl-y])
+    ;(prn "area stats: [tr.x,tr.y] " [tr-x tr-y])
+    ;(prn "area stats: [bl.x,bl.y] " [bl-x bl-y])
+    ;(prn "area stats: [br.x,br.y] " [br-x br-y])
+    (assoc result layer-name
+           {:x x
+            :y y
+            :tl-x tl-x
+            :tl-y tl-y
+            :tr-x tr-x
+            :tr-y tr-y
+            :bl-x bl-x
+            :bl-y bl-y
+            :br-x br-x
+            :br-y br-y
+            :el-tl-x el-tl-x
+            :el-tl-y el-tl-y
+            :el-tr-x el-tr-x
+            :el-tr-y el-tr-y
+            :el-bl-x el-bl-x
+            :el-bl-y el-bl-y
+            :el-br-x el-br-x
+            :el-br-y el-br-y
+            :el-w el-w
+            :el-h el-h
+            :max-el-w max-el-w
+            })));  }}}
+(defn calculate-layer-positions [layer-name canvas layer-opts state result];  {{{
+  (if (= :vertical (:direction layer-opts))
+    (calculate-vertical-layer-positions layer-name canvas layer-opts state result)
+    (calculate-horizontal-layer-positions layer-name canvas layer-opts state result)));  }}}
+(defn sample-draw-chart [draw-opts canvas state canvas-state];  {{{
+  ;(prn "state: " (:result @state))
+  ;(prn "max :name " (apply max-key :name (:result @state)))
+  ;(prn "max :count " (apply max-key :count (:result @state)))
+  ;(prn "draw-opts: " draw-opts)
+  (let [ctx (.getContext canvas "2d")
+        w (.-clientWidth canvas)
+        h (.-clientHeight canvas)
+        max-value (:filtered-result @app-state)
+        max-value (:count (apply max-key :count (:result @state)))
+        result {:canvas-width w
+                :canvas-height h}
+        label-layer-opts (:labels (:layers draw-opts))
+        result (calculate-layer-positions :labels canvas label-layer-opts state result)
+        bar-label-layer-opts (:bar-labels (:layers draw-opts))
+        result (calculate-layer-positions :bar-labels canvas bar-label-layer-opts state result)
+        bars-layer-opts (:bars (:layers draw-opts))
+        result (calculate-layer-positions :bars canvas bars-layer-opts state result)
+          ]
+    (.clearRect ctx (- 0 0.5) (- 0 0.5) (- w 0.5) (- h 0.5))
+    ;; draw labels
+    (let [x (:labels result)]
+      (.beginPath ctx)
+      (if (:debug label-layer-opts)
+        (.fillRect ctx (:tl-x x) (:tl-y x) (- (:tr-x x) (:tl-x x)) (- (:br-y x) (:tr-y x)))
+        (doseq [[value index] (map vector (:result @state) (range))]
+          (let [mt (.measureText ctx (:name value))
+                tw (.-width mt)
+                pos-x (if (= (:element-align label-layer-opts) :right)
+                        (- (:tr-x x) tw)
+                        (+ (:tl-x x) (:el-tl-x x)))
+                hover? (= (:hovered-index @state) index)]
+            (if hover?
+              (do (set! (.-fillStyle ctx) "red"))
+              (do (set! (.-fillStyle ctx) "black")))
+            (.fillText ctx (:name value) pos-x (+ (* index (:el-h x)) (:el-tl-y x))))))
+      (.closePath ctx))
+    ;; draw bars
+    (let [x (:bars result)]
+      (.beginPath ctx)
 
-;; draw lowest value vertical line
-;(.moveTo ctx (domain-to-range [0 max-value] [sw w] (:count lowest)) 0)
-;(.lineTo ctx (domain-to-range [0 max-value] [sw w] (:count lowest)) h)
+            ;; draw grid: 25%
+            (let [domain-value (domain-to-range [0 max-value] [(:tl-x x) (:tr-x x)] (/ max-value 4))]
+              (set! (.-strokeStyle ctx) "#ddd")
+              ;; draw middle point verticle line
+              (.setLineDash ctx (array 3 2))
+              (.moveTo ctx domain-value 0)
+              (.lineTo ctx domain-value (:bl-y x))
+              (.stroke ctx)
+              (set! (.-fillStyle ctx) "#ddd")
+              (.fillText ctx "25%" (- domain-value (/ (.-width (.measureText ctx "25%")) 2)) (+ (:br-y x) (:el-tl-y x))))
 
-;(.stroke ctx)
-;(.closePath ctx)
+            ;; draw grid: 50%
+            (let [domain-value (domain-to-range [0 max-value] [(:tl-x x) (:tr-x x)] (/ max-value 2))]
+              (set! (.-strokeStyle ctx) "#ddd")
+              ;; draw middle point verticle line
+              (.setLineDash ctx (array 3 2))
+              (.moveTo ctx domain-value 0)
+              (.lineTo ctx domain-value (:bl-y x))
+              (.stroke ctx)
+              (set! (.-fillStyle ctx) "#ddd")
+              (.fillText ctx "50%" (- domain-value (/ (.-width (.measureText ctx "50%")) 2)) (+ (:br-y x) (:el-tl-y x))))
+
+            ;; draw grid: 75%
+            (let [domain-value (domain-to-range [0 max-value] [(:tl-x x) (:tr-x x)] (* max-value 0.75))]
+              (set! (.-strokeStyle ctx) "#ddd")
+              ;; draw middle point verticle line
+              (.setLineDash ctx (array 3 2))
+              (.moveTo ctx domain-value 0)
+              (.lineTo ctx domain-value (:bl-y x))
+              (.stroke ctx)
+              (set! (.-fillStyle ctx) "#ddd")
+              (.fillText ctx "75%" (- domain-value (/ (.-width (.measureText ctx "75%")) 2)) (+ (:br-y x) (:el-tl-y x))))
+
+            ;; draw grid: 100%
+            (let [domain-value (domain-to-range [0 max-value] [(:tl-x x) (:tr-x x)] max-value)]
+              (set! (.-strokeStyle ctx) "#ddd")
+              ;; draw middle point verticle line
+              (.setLineDash ctx (array 3 2))
+              (.moveTo ctx domain-value 0)
+              (.lineTo ctx domain-value (:bl-y x))
+              (.stroke ctx)
+              (set! (.-fillStyle ctx) "#ddd")
+              (.fillText ctx "100%" (- domain-value (/ (.-width (.measureText ctx "100%")) 2)) (+ (:br-y x) (:el-tl-y x))))
+
+      (if (:debug bars-layer-opts)
+        (.fillRect ctx (:tl-x x) (:tl-y x) (- (:tr-x x) (:tl-x x)) (- (:br-y x) (:tr-y x)))
+        (doseq [[value index] (map vector (:result @state) (range))]
+          (let [w  (domain-to-range [0 max-value] [(:tl-x x) (:tr-x x)] (:count value))
+                h (:el-bl-y x)
+                pos-x (if (= (:element-align bars-layer-opts) :right)
+                        (- (:tr-x x) w)
+                        (+ (:tl-x x) (:el-tl-x x)))
+                hover? (= (:hovered-index @state) index)
+                pos-y (+ (* index (:el-h x)) (:el-tl-y x))]
+            (if hover?
+              (do (set! (.-fillStyle ctx) "red"))
+              (do (set! (.-fillStyle ctx) "darkblue")))
+            (.fillRect ctx pos-x pos-y w h)
+            (swap! canvas-state assoc :positions (conj (:positions @canvas-state) [pos-x pos-y (+ pos-x w) (+ pos-y h)]))
+            ))
+            )
+      (.closePath ctx))
+
+    ;; draw bar labels
+    (let [x (:bar-labels result)]
+      (.beginPath ctx)
+      (if (:debug bar-label-layer-opts)
+        (.fillRect ctx (:tl-x x) (:tl-y x) (- (:tr-x x) (:tl-x x)) (- (:br-y x) (:tr-y x)))
+        (doseq [[value index] (map vector (:result @state) (range))]
+          (let [mt (.measureText ctx (str (int-comma (:count value))))
+                tw (.-width mt)
+                w  (domain-to-range [0 max-value] [(:tl-x x) (:tr-x x)] (:count value))
+                pos-x (if (= (:element-align bars-layer-opts) :right)
+                        (- (:tr-x x) tw)
+                        (+ (:tl-x x) (:el-tl-x x)))
+                hover? (= (:hovered-index @state) index)]
+            (if hover?
+              (do (set! (.-fillStyle ctx) "red"))
+              (do (set! (.-fillStyle ctx) "black")))
+            (.fillText ctx (str (int-comma (:count value))) (+ (:el-tl-x x) w) (+ (* index (:el-h x)) (:el-tl-y x)))
+            )))
+      (.closePath ctx))
+    )
+  ); }}}
 (defn horizontal-barchart [draw-opts canvas state canvas-state];  {{{
     (if (:has-result @state)
         (let [ctx    (.getContext canvas "2d")
@@ -390,36 +630,157 @@
                             (.fillText ctx (int-comma (:count value)) (- pw tw 5)  (+ (* index single-h) (/ single-h 1.6)))))))
 
             (.closePath ctx))));  }}}
-(defn vertical-barchart [dom-node state];  {{{
-    (let [canvas (.-nextSibling (.-firstChild @dom-node))
-          ctx    (.getContext canvas "2d")
-          w      (.-clientWidth canvas)
-          h      (.-clientHeight canvas)
-          max-value (:filtered-result @app-state)
-          max-n     (count (:result @state))
-          single-w  (/ w max-n)]
-        (.clearRect ctx 0 0 w h)
-        (doseq [index (range 0 w single-w)]
-            (.moveTo ctx index 0)
-            (.lineTo ctx index h))
-        ;(doseq [index (range 0 h single-h)]
-            ;(.moveTo ctx 0 index)
-            ;(.lineTo ctx w index))
-        (.moveTo ctx 0 h)
-        (.lineTo ctx w h)
-        (set! (.-strokeStyle ctx) "#444")
-        (.stroke ctx)
-        (set! (.-fillStyle ctx) "darkblue")
-        (set! (.-strokeStyle ctx) "#fff")
+(defn vertical-barchart [draw-opts canvas state canvas-state];  {{{
+  (let [ctx (.getContext canvas "2d")
+        w (.-clientWidth canvas)
+        h (.-clientHeight canvas)
+        max-value (:filtered-result @app-state)
+        max-value (:count (apply max-key :count (:result @state)))
+        result {:canvas-width w
+                :canvas-height h}
+        label-layer-opts (:labels (:layers draw-opts))
+        result (calculate-layer-positions :labels canvas label-layer-opts state result)
+        bar-label-layer-opts (:bar-labels (:layers draw-opts))
+        result (calculate-layer-positions :bar-labels canvas bar-label-layer-opts state result)
+        bars-layer-opts (:bars (:layers draw-opts))
+        result (calculate-layer-positions :bars canvas bars-layer-opts state result)
+        ]
+    (.clearRect ctx (- 0 0.5) (- 0 0.5) (- w 0.5) (- h 0.5))
+    ;; draw labels
+    (let [x (:labels result)]
+      (.beginPath ctx)
+      (if (:debug label-layer-opts)
         (doseq [[value index] (map vector (:result @state) (range))]
-            (.fillRect   ctx (* index single-w) (- h (domain-to-range [0 max-value] [0 h] (:count value))) single-w h)
-            (.strokeRect ctx (* index single-w) (- h (domain-to-range [0 max-value] [0 h] (:count value))) single-w h)
-            )
-        ;(.fillRect ctx 0 (* 0 single-h) (domain-to-range [0 max-value] [0 w] (:count (nth (:result @state) 0))) single-h)
-        ;(.fillRect ctx 0 (* 1 single-h) (domain-to-range [0 max-value] [0 w] (:count (nth (:result @state) 1))) single-h)
-        ;(.fillRect ctx 0 (* 2 single-h) (domain-to-range [0 max-value] [0 w] (:count (nth (:result @state) 2))) single-h)
-        ));  }}}
+          (.fillRect ctx (+ (* index (:el-w x)) (:el-tl-x x))
+                         (:tl-y x)
+                         (:el-w x)
+                         (:el-h x)))
+        (doseq [[value index] (map vector (:result @state) (range))]
+          (let [key (str (get value (:key label-layer-opts)))
+                mt (.measureText ctx key)
+                tw (.-width mt)
+                pos-x (+ (* index (:el-w x)) (:el-tl-x x))
+                pos-y (+ (:tl-y x) (:el-tl-y x))
+                hover? (= (:hovered-index @state) index)
+                rotate? (not (nil? (:rotate label-layer-opts)))]
+            (if hover?
+              (do (set! (.-fillStyle ctx) "red"))
+              (do (set! (.-fillStyle ctx) "black")))
+            (if rotate?
+              (do (.save ctx)
+                  (.translate ctx pos-x pos-y)
+                  (.rotate ctx  (* (:rotate label-layer-opts) (/ (.-PI js/Math) 180)))
+                  (.fillText ctx key 0 0)
+                  (.restore ctx))
+              (.fillText ctx key pos-x pos-y)))))
+      (.closePath ctx))
 
+    ;; draw bar labels
+    (let [x (:bar-labels result)]
+      (.beginPath ctx)
+      (if (:debug bar-label-layer-opts)
+        (.fillRect ctx (:tl-x x) (:tl-y x) (- (:tr-x x) (:tl-x x)) (- (:br-y x) (:tr-y x)))
+        (doseq [[value index] (map vector (:result @state) (range))]
+          (let [mt (.measureText ctx (str (int-comma (:count value))))
+                tw (.-width mt)
+                w  (domain-to-range [0 max-value] [(:tl-x x) (:tr-x x)] (:count value))
+                pos-x (+ (* index (:el-w x)) (:el-tl-x x))
+                pos-y (+ (:tl-y x) (:el-tl-y x))
+                hover? (= (:hovered-index @state) index)]
+            (if hover?
+              (do (set! (.-fillStyle ctx) "red"))
+              (do (set! (.-fillStyle ctx) "black")))
+            (do (.save ctx)
+                (.translate ctx pos-x pos-y)
+                (.rotate ctx  (* -90 (/ (.-PI js/Math) 180)))
+                (.fillText ctx (str (int-comma (:count value))) 0 0)
+                (.restore ctx))
+            ;(.fillText ctx (str (int-comma (:count value))) pos-x pos-y)
+            )))
+      (.closePath ctx))
+
+    ;; draw bars
+    (let [x (:bars result)]
+      (.beginPath ctx)
+      (if (:debug bars-layer-opts)
+        (.fillRect ctx (:tl-x x) (:tl-y x) (- (:tr-x x) (:tl-x x)) (- (:br-y x) (:tr-y x)))
+        (doseq [[value index] (map vector (:result @state) (range))]
+          (let [key (get value (:key bars-layer-opts))
+                mt (.measureText ctx (str (int-comma key)))
+                tw (.-width mt)
+                h  (domain-to-range [0 max-value] [0 (- (:bl-y x) (:tl-y x))] key)
+                pos-x (+ (* index (:el-w x)) (:el-tl-x x))
+                pos-y (- (:bl-y x) h)
+                w 20
+                hover? (= (:hovered-index @state) index)]
+            (if hover?
+              (do (set! (.-fillStyle ctx) "red"))
+              (do (set! (.-fillStyle ctx) "darkblue")))
+            (.fillRect ctx pos-x pos-y w h)
+            ;(.fillText ctx (str (int-comma (:count value))) pos-x (+ (* index (:el-h x)) (:el-tl-y x)))
+            )))
+      (.closePath ctx))
+    ));  }}}
+(defn default-vertical-barchart-options ; {{{
+  ([key1-name key2-value]
+   (default-vertical-barchart-options key1-name key2-value nil))
+  ([key1-name key2-value rotate-by]
+   {:layers {:labels {:direction :vertical
+                      :key key1-name
+                      :debug false
+                      :rotate rotate-by
+                      :area-padding {:l 10
+                                     :t (fn [pos element-height] (- (:canvas-height pos)
+                                                                    element-height))
+                                     :b (fn [pos element-height] 0)
+                                     :r 10}
+                      :element-padding {:l (fn [element-width] (/ element-width 10))
+                                        :t (fn [element-height] (/ element-height 1.6))
+                                        :b (fn [element-height] (/ element-height 1.6))
+                                        :r (fn [element-width] (/ element-width 10))}
+                      ; calculate the maxium width
+                      :max-element-width (fn [canvas state]
+                                           (let [x (apply max-key key1-name (:result @state))
+                                                 w (.-width (.measureText (.getContext canvas "2d")
+                                                                          (str (key1-name x))))]
+                                             w))
+                      }
+             :bar-labels {:direction :vertical
+                          :key key2-value
+                          :debug false
+                          :area-padding {:l 10
+                                         :t (fn [pos element-height] 0)
+                                         :b (fn [pos element-height] (:el-h (:labels pos)))
+                                         :r 10
+                                         }
+                          :element-padding {:l (fn [element-width]  (/ element-width  10))
+                                            :t (fn [element-height] (/ element-height 1.6))
+                                            :b (fn [element-height] (/ element-height 1.6))
+                                            :r (fn [element-width]  (/ element-width  10))}
+                          ; calculate the maxium width
+                          :max-element-width (fn [canvas state]
+                                               (let [x (apply max-key key2-value (:result @state))
+                                                     w (.-width (.measureText (.getContext canvas "2d")
+                                                                              (str (int-comma (key2-value x)))))]
+                                                 w))
+                          }
+             :bars {:direction :vertical
+                    :key key2-value
+                    :debug false
+                    :area-padding {:l 10
+                                   :t (fn [pos element-height] 0)
+                                   :b (fn [pos element-height] (:el-h (:labels pos)))
+                                   :r 10
+                                   }
+                    :element-padding {:l (fn [element-width]  (/ element-width  10))
+                                      :t (fn [element-height] 0)
+                                      :b (fn [element-height] 0)
+                                      :r (fn [element-width]  (/ element-width  10))}
+                    ; calculate the maxium width (we split the field into 4: 25%)
+                    :max-element-width (fn [canvas state] 0)
+                    }
+             }
+    }));  }}}
 ;;
 ;; filtered base component
 ;;
@@ -547,7 +908,27 @@
                                                         (component-render-fn state filter-state @dom-node canvas-state))
                                   :update-condition update?
                                   })));  }}}
-
+(defn hoverable-and-clickable-canvas [state filter-state canvas-state];  {{{
+  [:canvas (if (not (:has-result @state))
+             {:style {:display "none"}}
+             {:on-click (fn [e]
+                          (let [idx (:hovered-index @state)]
+                            (if (not (nil? idx))
+                              (let [item (nth (:result @state) idx)]
+                                (swap! filter-state assoc :borough (:name item))))))
+              :on-mouse-move
+              (fn [event]
+                (let [[mx my]  (get-canvas-position event canvas-state)
+                      xs       (map vector (:positions @canvas-state) (range))
+                      filtered (filter (fn [[[x1 y1 x2 y2] idx]]
+                                         (and (>= my y1) (<= my y2)))
+                                       xs)
+                      [_ idx]   (first filtered)]
+                  ;(debug "setting hover to idx: " idx)
+                  (swap! state assoc :hovered-index idx)))
+              :on-mouse-out #(swap! state assoc :hovered-index nil)
+              :class (if (nil? (:hovered-index @state)) "" "hovered")
+              })]);  }}}
 ;;
 ;; Season Component
 ;;
@@ -576,61 +957,60 @@
 ;; Year Component
 ;;
 (defn year-component [filter-state];  {{{
-    (let [dom-node (reagent/atom nil)
-          url (str (service-url) "/rpc/stats_year_cached_by_filter_accidents?select=year,count&order=year")]
-        (base-filtered-component {:name "year-component"
-                                  :filter-state filter-state
-                                  :state (reagent/atom {:has-result false
-                                                        :url url
-                                                        :result (list)
-                                                        :last-filter-state @filter-state})
-                                  :update-state-on-load (fn [state filter-state response]
-                                                            (reset! state {:result response
-                                                                           :url url
-                                                                           :last-filter-state @filter-state
-                                                                           :has-result true}))
-
-                                  :component-did-update
-                                  (fn [this state]
-                                      (vertical-barchart dom-node state))
-
-                                  :component-did-mount
-                                  (fn [this]
-                                      (reset! dom-node (reagent/dom-node this)))
-                                  :component-render (fn [state filter-state]
-                                                        [:div#year.with-canvas
-                                                         [:h2 "Year"]
-                                                         [:canvas (if (not (:has-result @state)) {:style {:display "none"}})]
-                                                         (if (:has-result @state)
-                                                             [:ul
-                                                              (for [item (:result @state)]
-                                                                  ^{:key item} [:li (:year item) ": " (:count item)])])
-                                                         ])})));  }}}
+    (let [url (str (service-url) "/rpc/stats_year_cached_by_filter_accidents?select=year,count&order=year")]
+        (canvas-base-filtered-component {:name "year-component"
+                                         :filter-state filter-state
+                                         :canvas-state (atom {:positions (vector)})
+                                         :state (reagent/atom {:has-result false
+                                                               :url url
+                                                               :result (list)
+                                                               :last-filter-state @filter-state})
+                                         :update-state-on-load (fn [canvas-state state filter-state response]
+                                                                 (reset! state {:result response
+                                                                                :url url
+                                                                                :last-filter-state @filter-state
+                                                                                :has-result true})
+                                                                 ; reset existing shape positions
+                                                                 (swap! canvas-state assoc :positions (vector)))
+                                         :on-draw vertical-barchart
+                                         :draw-options (default-vertical-barchart-options :year :count -45)
+                                         :canvas-at (fn [dom-node] (.-nextSibling (.-firstChild dom-node)))
+                                         :component-render
+                                         (fn [state filter-state dom-node canvas-state]
+                                           [:div#year.with-canvas
+                                            [:h2 "Year"]
+                                            (hoverable-and-clickable-canvas state filter-state canvas-state)
+                                            ])})));  }}}
 
 ;;
 ;; Month Component
 ;;
 (defn month-component [filter-state];  {{{
-    (let [url (str (service-url) "/rpc/stats_month_cached_by_filter_accidents?select=month,count")]
-        (base-filtered-component {:name "month-component"
-                                  :filter-state filter-state
-                                  :state (reagent/atom {:has-result false
-                                                        :url url
-                                                        :result (list)
-                                                        :last-filter-state @filter-state})
-                                  :update-state-on-load (fn [state filter-state response]
-                                                            (reset! state {:result response
-                                                                           :url url
-                                                                           :last-filter-state @filter-state
-                                                                           :has-result true}))
-                                  :component-render (fn [state filter-state]
-                                                        [:div#month
-                                                         [:h2 "Month"]
-                                                         (if (:has-result @state)
-                                                             [:ul
-                                                              (for [item (:result @state)]
-                                                                  ^{:key item} [:li (:month item) ": " (:count item)])])]
-                                                        )})));  }}}
+    (let [url (str (service-url) "/rpc/stats_month_cached_by_filter_accidents?select=month,count&order=month")]
+      (canvas-base-filtered-component {:name "month-component"
+                                       :filter-state filter-state
+                                       :canvas-state (atom {:positions (vector)})
+                                       :state (reagent/atom {:has-result false
+                                                             :url url
+                                                             :result (list)
+                                                             :last-filter-state @filter-state})
+                                       :update-state-on-load (fn [canvas-state state filter-state response]
+                                                               (reset! state {:result response
+                                                                              :url url
+                                                                              :last-filter-state @filter-state
+                                                                              :has-result true})
+                                                               ; reset existing shape positions
+                                                               (swap! canvas-state assoc :positions (vector)))
+                                       :on-draw vertical-barchart
+                                       :draw-options (default-vertical-barchart-options :month :count)
+                                       :canvas-at (fn [dom-node] (.-nextSibling (.-firstChild dom-node)))
+                                       :component-render
+                                       (fn [state filter-state dom-node canvas-state]
+                                         [:div#month.with-canvas
+                                          [:h2 "Month"]
+                                          (hoverable-and-clickable-canvas state filter-state canvas-state)
+                                          ])})
+        ));  }}}
 
 ;;
 ;; Weekday Component
@@ -817,199 +1197,7 @@
 ;;
 ;; Borough Component
 ;;
-(defn calculate-layer-positions [layer-name canvas layer-opts state result]
-  (let [w (:canvas-width result)
-        h (:canvas-height result)
-        n (count (:result @state))
-        ; (1) calculate element width (because of horizontal)
-        f (:max-element-width layer-opts)
-        max-el-w (apply f [canvas state])
-        ; (2) calculate element height
-        tl-y      (:t (:area-padding layer-opts))
-        bl-y (- h (:b (:area-padding layer-opts)))
-        el-h (/ (- bl-y tl-y) n)
-        ; (3) element stats
-        el-w (+ (apply (:l (:element-padding layer-opts)) [max-el-w])
-                max-el-w
-                (apply (:r (:element-padding layer-opts)) [max-el-w]))
-        el-tl-x (apply (:l (:element-padding layer-opts)) [max-el-w])
-        el-tl-y (apply (:t (:element-padding layer-opts)) [el-h])
-        el-bl-x el-tl-x
-        el-bl-y (- el-h (apply (:b (:element-padding layer-opts)) [el-h]))
-        el-tr-x (- el-w (apply (:r (:element-padding layer-opts)) [max-el-w]))
-        el-tr-y el-tl-y
-        el-br-x el-tr-x
-        el-br-y el-bl-y
-        ; (4) calculate area padded positions
-        tl-x (apply (:l (:area-padding layer-opts)) [result el-w])
-        bl-x tl-x
-        tr-x (- w (apply (:r (:area-padding layer-opts)) [result el-w]))
-        tr-y tl-y
-        br-x tr-x
-        br-y bl-y
-        x (- w tl-x)
-        y tl-y]
-    ;(prn "max element width: " max-el-w)
-    ;(prn "element height: " el-h)
-    ;(prn "total element width (incl. padding): " el-w)
-    ;(prn "el stats: [tl.x,tl.y] " [el-tl-x el-tl-y])
-    ;(prn "el stats: [bl.x,bl.y] " [el-bl-x el-bl-y])
-    ;(prn "el stats: [tr.x,tr.y] " [el-tr-x el-tr-y])
-    ;(prn "el stats: [br.x,br.y] " [el-br-x el-br-y])
-    ;(prn "area stats: [tl.x,tl.y] " [tl-x tl-y])
-    ;(prn "area stats: [tr.x,tr.y] " [tr-x tr-y])
-    ;(prn "area stats: [bl.x,bl.y] " [bl-x bl-y])
-    ;(prn "area stats: [br.x,br.y] " [br-x br-y])
-    (assoc result layer-name
-           {:x x
-            :y y
-            :tl-x tl-x
-            :tl-y tl-y
-            :tr-x tr-x
-            :tr-y tr-y
-            :bl-x bl-x
-            :bl-y bl-y
-            :br-x br-x
-            :br-y br-y
-            :el-tl-x el-tl-x
-            :el-tl-y el-tl-y
-            :el-tr-x el-tr-x
-            :el-tr-y el-tr-y
-            :el-bl-x el-bl-x
-            :el-bl-y el-bl-y
-            :el-br-x el-br-x
-            :el-br-y el-br-y
-            :el-w el-w
-            :el-h el-h
-            :max-el-w max-el-w
-            })))
-(defn sample-draw-chart [draw-opts canvas state canvas-state];  {{{
-  (prn "state: " (:result @state))
-  (prn "max :name " (apply max-key :name (:result @state)))
-  (prn "max :count " (apply max-key :count (:result @state)))
-  (prn "draw-opts: " draw-opts)
-  ;; handle labels layer
-  (let [ctx (.getContext canvas "2d")
-        w (.-clientWidth canvas)
-        h (.-clientHeight canvas)
-        max-value (:filtered-result @app-state)
-        result {:canvas-width w
-                :canvas-height h}
-        label-layer-opts (:labels (:layers draw-opts))
-        result (calculate-layer-positions :labels canvas label-layer-opts state result)
-        bar-label-layer-opts (:bar-labels (:layers draw-opts))
-        result (calculate-layer-positions :bar-labels canvas bar-label-layer-opts state result)
-        bars-layer-opts (:bars (:layers draw-opts))
-        result (calculate-layer-positions :bars canvas bars-layer-opts state result)
-          ]
-    (.clearRect ctx (- 0 0.5) (- 0 0.5) (- w 0.5) (- h 0.5))
-    ;; draw labels
-    (let [x (:labels result)]
-      (.beginPath ctx)
-      (if (:debug label-layer-opts)
-        (.fillRect ctx (:tl-x x) (:tl-y x) (- (:tr-x x) (:tl-x x)) (- (:br-y x) (:tr-y x)))
-        (doseq [[value index] (map vector (:result @state) (range))]
-          (let [mt (.measureText ctx (:name value))
-                tw (.-width mt)
-                pos-x (if (= (:element-align label-layer-opts) :right)
-                        (- (:tr-x x) tw)
-                        (+ (:tl-x x) (:el-tl-x x)))
-                hover? (= (:hovered-index @state) index)]
-            (if hover?
-              (do (set! (.-fillStyle ctx) "red"))
-              (do (set! (.-fillStyle ctx) "black")))
-            (.fillText ctx (:name value) pos-x (+ (* index (:el-h x)) (:el-tl-y x))))))
-      (.closePath ctx))
-    ;; draw bars
-    (let [x (:bars result)]
-      (.beginPath ctx)
-
-            ;; draw grid: 25%
-            (let [domain-value (domain-to-range [0 max-value] [(:tl-x x) (:tr-x x)] (/ max-value 4))]
-              (set! (.-strokeStyle ctx) "#ddd")
-              ;; draw middle point verticle line
-              (.setLineDash ctx (array 3 2))
-              (.moveTo ctx domain-value 0)
-              (.lineTo ctx domain-value (:bl-y x))
-              (.stroke ctx)
-              (set! (.-fillStyle ctx) "#ddd")
-              (.fillText ctx "25%" (- domain-value (/ (.-width (.measureText ctx "25%")) 2)) (+ (:br-y x) (:el-tl-y x))))
-
-            ;; draw grid: 50%
-            (let [domain-value (domain-to-range [0 max-value] [(:tl-x x) (:tr-x x)] (/ max-value 2))]
-              (set! (.-strokeStyle ctx) "#ddd")
-              ;; draw middle point verticle line
-              (.setLineDash ctx (array 3 2))
-              (.moveTo ctx domain-value 0)
-              (.lineTo ctx domain-value (:bl-y x))
-              (.stroke ctx)
-              (set! (.-fillStyle ctx) "#ddd")
-              (.fillText ctx "50%" (- domain-value (/ (.-width (.measureText ctx "50%")) 2)) (+ (:br-y x) (:el-tl-y x))))
-
-            ;; draw grid: 75%
-            (let [domain-value (domain-to-range [0 max-value] [(:tl-x x) (:tr-x x)] (* max-value 0.75))]
-              (set! (.-strokeStyle ctx) "#ddd")
-              ;; draw middle point verticle line
-              (.setLineDash ctx (array 3 2))
-              (.moveTo ctx domain-value 0)
-              (.lineTo ctx domain-value (:bl-y x))
-              (.stroke ctx)
-              (set! (.-fillStyle ctx) "#ddd")
-              (.fillText ctx "75%" (- domain-value (/ (.-width (.measureText ctx "75%")) 2)) (+ (:br-y x) (:el-tl-y x))))
-
-            ;; draw grid: 100%
-            (let [domain-value (domain-to-range [0 max-value] [(:tl-x x) (:tr-x x)] max-value)]
-              (set! (.-strokeStyle ctx) "#ddd")
-              ;; draw middle point verticle line
-              (.setLineDash ctx (array 3 2))
-              (.moveTo ctx domain-value 0)
-              (.lineTo ctx domain-value (:bl-y x))
-              (.stroke ctx)
-              (set! (.-fillStyle ctx) "#ddd")
-              (.fillText ctx "100%" (- domain-value (/ (.-width (.measureText ctx "100%")) 2)) (+ (:br-y x) (:el-tl-y x))))
-
-      (if (:debug bars-layer-opts)
-        (.fillRect ctx (:tl-x x) (:tl-y x) (- (:tr-x x) (:tl-x x)) (- (:br-y x) (:tr-y x)))
-        (doseq [[value index] (map vector (:result @state) (range))]
-          (let [w  (domain-to-range [0 max-value] [(:tl-x x) (:tr-x x)] (:count value))
-                h (:el-bl-y x)
-                pos-x (if (= (:element-align bars-layer-opts) :right)
-                        (- (:tr-x x) w)
-                        (+ (:tl-x x) (:el-tl-x x)))
-                hover? (= (:hovered-index @state) index)
-                pos-y (+ (* index (:el-h x)) (:el-tl-y x))]
-            (if hover?
-              (do (set! (.-fillStyle ctx) "red"))
-              (do (set! (.-fillStyle ctx) "darkblue")))
-            (.fillRect ctx pos-x pos-y w h)
-            (swap! canvas-state assoc :positions (conj (:positions @canvas-state) [pos-x pos-y (+ pos-x w) (+ pos-y h)]))
-            ))
-            )
-      (.closePath ctx))
-
-    ;; draw bar labels
-    (let [x (:bar-labels result)]
-      (.beginPath ctx)
-      (if (:debug bar-label-layer-opts)
-        (.fillRect ctx (:tl-x x) (:tl-y x) (- (:tr-x x) (:tl-x x)) (- (:br-y x) (:tr-y x)))
-        (doseq [[value index] (map vector (:result @state) (range))]
-          (let [mt (.measureText ctx (str (int-comma (:count value))))
-                tw (.-width mt)
-                w  (domain-to-range [0 max-value] [(:tl-x x) (:tr-x x)] (:count value))
-                pos-x (if (= (:element-align bars-layer-opts) :right)
-                        (- (:tr-x x) tw)
-                        (+ (:tl-x x) (:el-tl-x x)))
-                hover? (= (:hovered-index @state) index)]
-            (if hover?
-              (do (set! (.-fillStyle ctx) "red"))
-              (do (set! (.-fillStyle ctx) "black")))
-            (.fillText ctx (str (int-comma (:count value))) (+ (:el-tl-x x) w) (+ (* index (:el-h x)) (:el-tl-y x)))
-            )))
-      (.closePath ctx))
-    )
-  ); }}}
 (defn borough-component [filter-state];  {{{
-    ; TODO might need a separate canvas-stte here that is NOT reagent/atom but a normal atom
     (let [url (str (service-url) "/rpc/stats_borough_cached_by_filter_accidents?select=name,count")]
         (canvas-base-filtered-component {:name "borough-component"
                                          :filter-state filter-state
@@ -1090,26 +1278,7 @@
                                               [:h2 (if (:borough @filter-state)
                                                      (str "Boroughs = " (:borough @filter-state))
                                                      "Boroughs")]
-                                              [:canvas (if (not (:has-result @state))
-                                                           {:style {:display "none"}}
-                                                           {:on-click (fn [e]
-                                                                          (let [idx (:hovered-index @state)]
-                                                                              (if (not (nil? idx))
-                                                                                  (let [item (nth (:result @state) idx)]
-                                                                                      (swap! filter-state assoc :borough (:name item))))))
-                                                            :on-mouse-move
-                                                            (fn [event]
-                                                                (let [[mx my]  (get-canvas-position event canvas-state)
-                                                                      xs       (map vector (:positions @canvas-state) (range))
-                                                                      filtered (filter (fn [[[x1 y1 x2 y2] idx]]
-                                                                                          (and (>= my y1) (<= my y2)))
-                                                                                       xs)
-                                                                      [_ idx]   (first filtered)]
-                                                                    ;(debug "setting hover to idx: " idx)
-                                                                    (swap! state assoc :hovered-index idx)))
-                                                            :on-mouse-out #(swap! state assoc :hovered-index nil)
-                                                            :class (if (nil? (:hovered-index @state)) "" "hovered")
-                                                            })]
+                                              (hoverable-and-clickable-canvas state filter-state canvas-state)
                                               ;(if (:has-result @state)
                                               ;[:ul
                                               ;(for [item (:result @state)]
