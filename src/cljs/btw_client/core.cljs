@@ -386,7 +386,7 @@
   (let [ctx (.getContext canvas "2d")
         w (.-clientWidth canvas)
         h (.-clientHeight canvas)
-        max-value (:filtered-result @app-state)
+        total-accidents (:filtered-result @app-state)
         max-value (:count (apply max-key :count (:result @state)))
         result {:canvas-width w
                 :canvas-height h}
@@ -420,7 +420,10 @@
       (.beginPath ctx)
 
             ;; draw grid: 25%
-            (let [domain-value (domain-to-range [0 max-value] [(:tl-x x) (:tr-x x)] (/ max-value 4))]
+            (let [domain-value (domain-to-range [0 max-value] [(:tl-x x) (:tr-x x)] (/ max-value 4))
+                  range-value  (domain-to-range [(:tl-x x) (:tr-x x)] [0 max-value] domain-value)
+                  percentage   (* (/ range-value total-accidents) 100)
+                  label        (str (int percentage) "%")]
               (set! (.-strokeStyle ctx) "#ddd")
               ;; draw middle point verticle line
               (.setLineDash ctx (array 3 2))
@@ -428,10 +431,13 @@
               (.lineTo ctx domain-value (:bl-y x))
               (.stroke ctx)
               (set! (.-fillStyle ctx) "#ddd")
-              (.fillText ctx "25%" (- domain-value (/ (.-width (.measureText ctx "25%")) 2)) (+ (:br-y x) (:el-tl-y x))))
+              (.fillText ctx label (- domain-value (/ (.-width (.measureText ctx label)) 2)) (+ (:br-y x) (:el-tl-y x))))
 
             ;; draw grid: 50%
-            (let [domain-value (domain-to-range [0 max-value] [(:tl-x x) (:tr-x x)] (/ max-value 2))]
+            (let [domain-value (domain-to-range [0 max-value] [(:tl-x x) (:tr-x x)] (/ max-value 2))
+                  range-value  (domain-to-range [(:tl-x x) (:tr-x x)] [0 max-value] domain-value)
+                  percentage   (* (/ range-value total-accidents) 100)
+                  label        (str (int percentage) "%")]
               (set! (.-strokeStyle ctx) "#ddd")
               ;; draw middle point verticle line
               (.setLineDash ctx (array 3 2))
@@ -439,10 +445,13 @@
               (.lineTo ctx domain-value (:bl-y x))
               (.stroke ctx)
               (set! (.-fillStyle ctx) "#ddd")
-              (.fillText ctx "50%" (- domain-value (/ (.-width (.measureText ctx "50%")) 2)) (+ (:br-y x) (:el-tl-y x))))
+              (.fillText ctx label (- domain-value (/ (.-width (.measureText ctx label)) 2)) (+ (:br-y x) (:el-tl-y x))))
 
             ;; draw grid: 75%
-            (let [domain-value (domain-to-range [0 max-value] [(:tl-x x) (:tr-x x)] (* max-value 0.75))]
+            (let [domain-value (domain-to-range [0 max-value] [(:tl-x x) (:tr-x x)] (* max-value 0.75))
+                  range-value  (domain-to-range [(:tl-x x) (:tr-x x)] [0 max-value] domain-value)
+                  percentage   (* (/ range-value total-accidents) 100)
+                  label        (str (int percentage) "%")]
               (set! (.-strokeStyle ctx) "#ddd")
               ;; draw middle point verticle line
               (.setLineDash ctx (array 3 2))
@@ -450,10 +459,13 @@
               (.lineTo ctx domain-value (:bl-y x))
               (.stroke ctx)
               (set! (.-fillStyle ctx) "#ddd")
-              (.fillText ctx "75%" (- domain-value (/ (.-width (.measureText ctx "75%")) 2)) (+ (:br-y x) (:el-tl-y x))))
+              (.fillText ctx label (- domain-value (/ (.-width (.measureText ctx label)) 2)) (+ (:br-y x) (:el-tl-y x))))
 
             ;; draw grid: 100%
-            (let [domain-value (domain-to-range [0 max-value] [(:tl-x x) (:tr-x x)] max-value)]
+            (let [domain-value (domain-to-range [0 max-value] [(:tl-x x) (:tr-x x)] max-value)
+                  range-value  (domain-to-range [(:tl-x x) (:tr-x x)] [0 max-value] domain-value)
+                  percentage   (* (/ range-value total-accidents) 100)
+                  label        (str (int percentage) "%")]
               (set! (.-strokeStyle ctx) "#ddd")
               ;; draw middle point verticle line
               (.setLineDash ctx (array 3 2))
@@ -461,7 +473,7 @@
               (.lineTo ctx domain-value (:bl-y x))
               (.stroke ctx)
               (set! (.-fillStyle ctx) "#ddd")
-              (.fillText ctx "100%" (- domain-value (/ (.-width (.measureText ctx "100%")) 2)) (+ (:br-y x) (:el-tl-y x))))
+              (.fillText ctx label (- domain-value (/ (.-width (.measureText ctx label)) 2)) (+ (:br-y x) (:el-tl-y x))))
 
       (if (:debug bars-layer-opts)
         (.fillRect ctx (:tl-x x) (:tl-y x) (- (:tr-x x) (:tl-x x)) (- (:br-y x) (:tr-y x)))
