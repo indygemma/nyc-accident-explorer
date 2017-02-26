@@ -99,6 +99,14 @@ div#month {
     padding: 30px;
 }
 
+div#season {
+    padding: 30px;
+}
+
+div#weekday {
+    padding: 30px;
+}
+
 /**
  * Casualty Component
  */
