@@ -672,7 +672,7 @@
                          (:el-w x)
                          (:el-h x)))
         (doseq [[value index] (map vector (:result @state) (range))]
-          (let [key (str (get value (:key label-layer-opts)))
+          (let [key ((:key-label label-layer-opts) value)
                 mt (.measureText ctx key)
                 tw (.-width mt)
                 pos-x (+ (:tl-x x) (* index (:el-w x)) (:el-tl-x x))
@@ -818,11 +818,12 @@
             }
    })
 (defn default-vertical-barchart-options ; {{{
-  ([key1-name key2-value]
-   (default-vertical-barchart-options key1-name key2-value nil))
-  ([key1-name key2-value rotate-by]
+  ([key-calc key-label value]
+   (default-vertical-barchart-options key-calc key-label value nil))
+  ([key-calc key-label value rotate-by]
    {:layers {:labels {:direction :vertical
-                      :key key1-name
+                      :key-calc key-calc
+                      :key-label key-label
                       :debug false
                       :rotate rotate-by
                       :area-padding {:l 40
@@ -830,19 +831,19 @@
                                                                     element-height))
                                      :b (fn [pos element-height] 0)
                                      :r 0}
-                      :element-padding {:l (fn [element-width] (/ element-width 10))
+                      :element-padding {:l (fn [element-width]  0)
                                         :t (fn [element-height] (/ element-height 1.6))
-                                        :b (fn [element-height] (/ element-height 1.6))
-                                        :r (fn [element-width] (/ element-width 10))}
+                                        :b (fn [element-height] 0)
+                                        :r (fn [element-width]  0)}
                       ; calculate the maxium width
                       :max-element-width (fn [canvas state]
-                                           (let [x (apply max-key key1-name (:result @state))
+                                           (let [x (apply max-key key-calc (:result @state))
                                                  w (.-width (.measureText (.getContext canvas "2d")
-                                                                          (str (key1-name x))))]
+                                                                          (key-label x)))]
                                              w))
                       }
              :bar-labels {:direction :vertical
-                          :key key2-value
+                          :key value
                           :debug false
                           :area-padding {:l 40
                                          :t (fn [pos element-height] 0)
@@ -855,13 +856,13 @@
                                             :r (fn [element-width]  (/ element-width  10))}
                           ; calculate the maxium width
                           :max-element-width (fn [canvas state]
-                                               (let [x (apply max-key key2-value (:result @state))
+                                               (let [x (apply max-key value (:result @state))
                                                      w (.-width (.measureText (.getContext canvas "2d")
-                                                                              (str (int-comma (key2-value x)))))]
+                                                                              (str (int-comma (value x)))))]
                                                  w))
                           }
              :bars {:direction :vertical
-                    :key key2-value
+                    :key value
                     :debug false
                     :area-padding {:l 40
                                    :t (fn [pos element-height] 0)
@@ -1046,7 +1047,14 @@
                                                              ; reset existing shape positions
                                                              (swap! canvas-state assoc :positions (vector)))
                                      :on-draw vertical-barchart
-                                     :draw-options (default-vertical-barchart-options :year :count -45)
+                                     :draw-options (let [padded-month (fn [x] (if (< x 10) (str "0" x) x))]
+                                                     (default-vertical-barchart-options
+                                                       (fn [x]
+                                                         (+ (:year x) (padded-month (:month x))))
+                                                       (fn [x]
+                                                         (str (:year x) "-" (padded-month (:month x))))
+                                                       :count
+                                                       -60))
                                      :canvas-at (fn [dom-node] (.-nextSibling (.-firstChild dom-node)))
                                      :component-render
                                      (fn [state filter-state dom-node canvas-state]
@@ -1075,7 +1083,7 @@
                                                                  ; reset existing shape positions
                                                                  (swap! canvas-state assoc :positions (vector)))
                                          :on-draw vertical-barchart
-                                         :draw-options (default-vertical-barchart-options :year :count -45)
+                                         :draw-options (default-vertical-barchart-options (fn [x] (:year x)) (fn [x] (str (:year x))) :count -45)
                                          :canvas-at (fn [dom-node] (.-nextSibling (.-firstChild dom-node)))
                                          :component-render
                                          (fn [state filter-state dom-node canvas-state]
@@ -1104,7 +1112,7 @@
                                                                ; reset existing shape positions
                                                                (swap! canvas-state assoc :positions (vector)))
                                        :on-draw vertical-barchart
-                                       :draw-options (default-vertical-barchart-options :month :count)
+                                       :draw-options (default-vertical-barchart-options (fn [x] (:month x)) (fn [x] (str (:month x))) :count)
                                        :canvas-at (fn [dom-node] (.-nextSibling (.-firstChild dom-node)))
                                        :component-render
                                        (fn [state filter-state dom-node canvas-state]
