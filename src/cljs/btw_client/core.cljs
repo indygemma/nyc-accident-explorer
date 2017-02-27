@@ -1228,26 +1228,36 @@
 ;;
 ;; Hour Component
 (defn hour-component [filter-state];  {{{
-    (let [url (str (service-url) "/rpc/stats_hour_cached_by_filter_accidents?select=hour,count")]
-        (base-filtered-component {:name "hour-component"
+    (let [url (str (service-url) "/rpc/stats_hour_cached_by_filter_accidents?select=hour,count&order=hour")]
+        (canvas-base-filtered-component {:name "hour-component"
                                   :filter-state filter-state
+                                  :canvas-state (atom {:positions (vector)})
                                   :state (reagent/atom {:has-result false
                                                         :url url
                                                         :result (list)
                                                         :last-filter-state @filter-state})
-                                  :update-state-on-load (fn [state filter-state response]
+                                  :update-state-on-load (fn [canvas-state state filter-state response]
                                                             (reset! state {:result response
                                                                            :url url
                                                                            :last-filter-state @filter-state
-                                                                           :has-result true}))
-                                  :component-render (fn [state filter-state]
-                                                        [:div
-                                                         [:h2 "Hours During the Day"]
-                                                         (if (:has-result @state)
-                                                             [:ul
-                                                              (for [item (:result @state)]
-                                                                  ^{:key item} [:li (:hour item) ": " (:count item)])])]
-                                                        )})));  }}}
+                                                                           :has-result true})
+                                                            ; reset existing shape positions
+                                                            (swap! canvas-state assoc :positions (vector)))
+                                  :on-draw vertical-barchart
+                                  :draw-options (default-vertical-barchart-options (fn [x] (:hour x)) (fn [x] (str (:hour x))) :count 0)
+                                  :canvas-at (fn [dom-node] (.-nextSibling (.-firstChild dom-node)))
+                                  :component-render (fn [state filter-state dom-node canvas-state]
+                                                      [:div#hour.with-canvas
+                                                       [:h2 "Time of Day"]
+                                                       (hoverable-and-clickable-canvas (/ (.-clientWidth (.-body js/document)) 3)
+                                                                                       "200%"
+                                                                                       state
+                                                                                       filter-state
+                                                                                       canvas-state
+                                                                                       :vertical
+                                                                                       (fn [filter-state item]
+                                                                                         (swap! filter-state assoc :hour (:hour item))))
+                                                       ])})));  }}}
 
 ;;
 ;; Intersection Component
@@ -1489,7 +1499,7 @@
                                                 [:h2 (if (:borough @filter-state)
                                                        (str "Vehicle Type: " (:vehicle-type @filter-state))
                                                        "Vehicle Types")]
-                                                (hoverable-and-clickable-canvas (* (.-clientWidth (.-body js/document)) 0.9)
+                                                (hoverable-and-clickable-canvas (* (.-clientWidth (.-body js/document)) 0.5)
                                                                                 "500%"
                                                                                 state
                                                                                 filter-state
@@ -1587,9 +1597,11 @@
           [month-component filter-state]
           [weekday-component filter-state]
           ]
-         [vehicle-type-component filter-state]
+         [:div.flex-row
+          [vehicle-type-component filter-state]
+          [hour-component filter-state]
+         ]
          [cluster-component filter-state]
-         [hour-component filter-state]
          [factor-component filter-state]
          [intersection-component filter-state]
          [off-street-component filter-state]
