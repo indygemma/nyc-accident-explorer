@@ -106,7 +106,13 @@
          }
      value]);  }}}
 (defn active-filters-component [filter-state];  {{{
-    (let [casualty-type (:casualty-type @filter-state)
+    (let [year1         (:year1 @filter-state)
+          month1        (:month1 @filter-state)
+          year2         (:year2 @filter-state)
+          month2        (:month2 @filter-state)
+          hour          (:hour @filter-state)
+          weekday       (:weekday @filter-state)
+          casualty-type (:casualty-type @filter-state)
           borough       (:borough @filter-state)
           intersection1 (:intersection1 @filter-state)
           intersection2 (:intersection2 @filter-state)
@@ -117,8 +123,18 @@
         [:div#active-filters
          ;[:h5 "Active Filters"
           [:ul
+           (if (and (not (nil? year1)) (not (nil? year2)))
+             [:li [:span "From " (removable-filter filter-state :year1 year1) " - " (removable-filter filter-state :year2 year2)]])
+           (if (and (not (nil? year1)) (nil? year2))
+             [:li [:span "Year: " (removable-filter filter-state :year1 year1)]])
+           (if (not (nil? month1))
+             [:li [:span "Month: " (removable-filter filter-state :month1 month1)]])
+           (if (not (nil? hour))
+             [:li [:span "Time of Day: " (removable-filter filter-state :hour hour)]])
+           (if (not (nil? weekday))
+             [:li [:span "Weekday: " (removable-filter filter-state :weekday weekday)]])
            (if (not (empty? casualty-type))
-               [:li [:span "Casualty Type "] (removable-filter filter-state :casualty-type casualty-type)])
+             [:li [:span "Casualty Type: "] (removable-filter filter-state :casualty-type casualty-type)])
            (if (not (empty? borough))
                [:li [:span "Borough: "] (removable-filter filter-state :borough borough)])
            (if (and (not (empty? intersection1)) (empty? intersection2))
@@ -733,6 +749,7 @@
               (do (set! (.-fillStyle ctx) "darkblue")))
             (.fillRect ctx pos-x pos-y w h)
             ;(.fillText ctx (str (int-comma (:count value))) pos-x (+ (* index (:el-h x)) (:el-tl-y x)))
+            (swap! canvas-state assoc :positions (conj (:positions @canvas-state) [pos-x pos-y (+ pos-x w) (+ pos-y h)]))
             )))
       (.closePath ctx))
 
@@ -753,7 +770,6 @@
                 inside? (> h tw)
                 [pos-x pos-y] (if inside? [pos1-x pos1-y]
                                           [pos2-x pos2-y])]
-            (prn "h: " h " tw: " tw)
             (if inside?
               (do (set! (.-fillStyle ctx) "#fff"))
               (do (set! (.-fillStyle ctx) "#222")))
@@ -1011,7 +1027,7 @@
                                                         (component-render-fn state filter-state @dom-node canvas-state))
                                   :update-condition update?
                                   })));  }}}
-(defn hoverable-and-clickable-canvas [width state filter-state canvas-state];  {{{
+(defn hoverable-and-clickable-canvas [width state filter-state canvas-state direction onclick];  {{{
   [:canvas (if (not (:has-result @state))
              {:style {:display "none"}}
              {:width width
@@ -1019,13 +1035,15 @@
                           (let [idx (:hovered-index @state)]
                             (if (not (nil? idx))
                               (let [item (nth (:result @state) idx)]
-                                (swap! filter-state assoc :borough (:name item))))))
+                                (onclick filter-state item)))))
               :on-mouse-move
               (fn [event]
                 (let [[mx my]  (get-canvas-position event canvas-state)
                       xs       (map vector (:positions @canvas-state) (range))
                       filtered (filter (fn [[[x1 y1 x2 y2] idx]]
-                                         (and (>= my y1) (<= my y2)))
+                                         (if (= :horizontal direction)
+                                           (and (>= my y1) (<= my y2))
+                                           (and (>= mx x1) (<= mx x2))))
                                        xs)
                       [_ idx]   (first filtered)]
                   ;(debug "setting hover to idx: " idx)
@@ -1066,7 +1084,14 @@
                                      (fn [state filter-state dom-node canvas-state]
                                        [:div#season.with-canvas
                                         [:h2 "Timeline"]
-                                        (hoverable-and-clickable-canvas (* 0.9 (.-clientWidth (.-body js/document))) state filter-state canvas-state)
+                                        (hoverable-and-clickable-canvas (* 0.9 (.-clientWidth (.-body js/document)))
+                                                                        state
+                                                                        filter-state
+                                                                        canvas-state
+                                                                        :vertical
+                                                                        (fn [filter-state item]
+                                                                           (swap! filter-state assoc :year1 (:year item))
+                                                                           (swap! filter-state assoc :month1 (:month item))))
                                         ])})));  }}}
 
 ;;
@@ -1095,7 +1120,13 @@
                                          (fn [state filter-state dom-node canvas-state]
                                            [:div#year.with-canvas
                                             [:h2 "Year"]
-                                            (hoverable-and-clickable-canvas (/ (.-clientWidth (.-body js/document)) 8) state filter-state canvas-state)
+                                            (hoverable-and-clickable-canvas (/ (.-clientWidth (.-body js/document)) 8)
+                                                                            state
+                                                                            filter-state
+                                                                            canvas-state
+                                                                            :vertical
+                                                                            (fn [filter-state item]
+                                                                              (swap! filter-state assoc :year1 (:year item))))
                                             ])})));  }}}
 
 ;;
@@ -1124,7 +1155,14 @@
                                        (fn [state filter-state dom-node canvas-state]
                                          [:div#month.with-canvas
                                           [:h2 "Month"]
-                                          (hoverable-and-clickable-canvas (/ (.-clientWidth (.-body js/document)) 4) state filter-state canvas-state)
+                                          (hoverable-and-clickable-canvas (/ (.-clientWidth (.-body js/document)) 4)
+                                                                          state
+                                                                          filter-state
+                                                                          canvas-state
+                                                                          :vertical
+                                                                          (fn [filter-state item]
+                                                                            (swap! filter-state assoc :month1 (:month item)))
+                                                                          )
                                           ])})
         ));  }}}
 
@@ -1156,7 +1194,14 @@
                                      (fn [state filter-state dom-node canvas-state]
                                        [:div#weekday.with-canvas
                                         [:h2 "Weekdays"]
-                                        (hoverable-and-clickable-canvas (/ (.-clientWidth (.-body js/document)) 5) state filter-state canvas-state)
+                                        (hoverable-and-clickable-canvas (/ (.-clientWidth (.-body js/document)) 5)
+                                                                        state
+                                                                        filter-state
+                                                                        canvas-state
+                                                                        :horizontal
+                                                                        (fn [filter-state item]
+                                                                          (swap! filter-state assoc :weekday (:name item)))
+                                                                        )
                                         ;(if (:has-result @state)
                                           ;[:ul
                                            ;(for [item (:result @state)]
@@ -1349,7 +1394,14 @@
                                               [:h2 (if (:borough @filter-state)
                                                      (str "Boroughs = " (:borough @filter-state))
                                                      "Boroughs")]
-                                              (hoverable-and-clickable-canvas (/ (.-clientWidth (.-body js/document)) 5) state filter-state canvas-state)
+                                              (hoverable-and-clickable-canvas (/ (.-clientWidth (.-body js/document)) 5)
+                                                                              state
+                                                                              filter-state
+                                                                              canvas-state
+                                                                              :horizontal
+                                                                              (fn [filter-state item]
+                                                                                (swap! filter-state assoc :borough (:name item)))
+                                                                              )
                                               ;(if (:has-result @state)
                                               ;[:ul
                                               ;(for [item (:result @state)]
