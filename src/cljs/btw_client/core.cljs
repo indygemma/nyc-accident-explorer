@@ -339,7 +339,9 @@
         tr-y tl-y
         br-y bl-y
         x (- w tl-x)
-        y tl-y]
+        y tl-y
+        width (- tr-x tl-x)
+        height (- bl-y tl-y)]
     ;(prn "max element width: " max-el-w)
     ;(prn "element height: " el-h)
     ;(prn "total element width (incl. padding): " el-w)
@@ -354,6 +356,8 @@
     (assoc result layer-name
            {:x x
             :y y
+            :w width
+            :h height
             :tl-x tl-x
             :tl-y tl-y
             :tr-x tr-x
@@ -646,7 +650,7 @@
   (let [ctx (.getContext canvas "2d")
         w (.-clientWidth canvas)
         h (.-clientHeight canvas)
-        max-value (:filtered-result @app-state)
+        total-accidents (:filtered-result @app-state)
         max-value (:count (apply max-key :count (:result @state)))
         result {:canvas-width w
                 :canvas-height h}
@@ -690,8 +694,29 @@
       (.closePath ctx))
 
     ;; draw bars
-    (let [x (:bars result)]
+    (let [x (:bars result)
+          draw-grid (fn [value]
+                      (let [domain-value (domain-to-range [0 max-value] [(:tl-y x) (:bl-y x)] value)
+                            range-value  (domain-to-range [(:tl-y x) (:bl-y x)] [0 max-value] domain-value)
+                            percentage   (* (/ range-value total-accidents) 100)
+                            label        (str (int percentage) "%")]
+                        (set! (.-strokeStyle ctx) "#ddd")
+                        ;; draw middle point verticle line
+                        (.setLineDash ctx (array 3 2))
+                        (.moveTo ctx 30 (- (:h x) domain-value))
+                        (.lineTo ctx w  (- (:h x) domain-value))
+                        (.stroke ctx)
+                        (set! (.-fillStyle ctx) "#ddd")
+                        (.fillText ctx label 5 (+ (- (:h x) domain-value) 10))
+                        ))]
       (.beginPath ctx)
+
+      ;; draw grids
+      (draw-grid (/ max-value 4))
+      (draw-grid (/ max-value 2))
+      (draw-grid (* max-value 0.75))
+      (draw-grid max-value)
+
       (if (:debug bars-layer-opts)
         (.fillRect ctx (:tl-x x) (:tl-y x) (- (:tr-x x) (:tl-x x)) (- (:br-y x) (:tr-y x)))
         (doseq [[value index] (map vector (:result @state) (range))]
@@ -800,11 +825,11 @@
                       :key key1-name
                       :debug false
                       :rotate rotate-by
-                      :area-padding {:l 20
+                      :area-padding {:l 40
                                      :t (fn [pos element-height] (- (:canvas-height pos)
                                                                     element-height))
                                      :b (fn [pos element-height] 0)
-                                     :r 10}
+                                     :r 0}
                       :element-padding {:l (fn [element-width] (/ element-width 10))
                                         :t (fn [element-height] (/ element-height 1.6))
                                         :b (fn [element-height] (/ element-height 1.6))
@@ -819,10 +844,10 @@
              :bar-labels {:direction :vertical
                           :key key2-value
                           :debug false
-                          :area-padding {:l 20
+                          :area-padding {:l 40
                                          :t (fn [pos element-height] 0)
                                          :b (fn [pos element-height] (:el-h (:labels pos)))
-                                         :r 10
+                                         :r 0
                                          }
                           :element-padding {:l (fn [element-width]  (/ element-width  10))
                                             :t (fn [element-height] (/ element-height 1.6))
@@ -838,10 +863,10 @@
              :bars {:direction :vertical
                     :key key2-value
                     :debug false
-                    :area-padding {:l 20
+                    :area-padding {:l 40
                                    :t (fn [pos element-height] 0)
                                    :b (fn [pos element-height] (:el-h (:labels pos)))
-                                   :r 10
+                                   :r 0
                                    }
                     :element-padding {:l (fn [element-width]  (/ element-width  10))
                                       :t (fn [element-height] 0)
