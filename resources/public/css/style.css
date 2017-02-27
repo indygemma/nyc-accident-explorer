@@ -107,6 +107,10 @@ div#weekday {
     padding: 30px;
 }
 
+div#vehicle-types {
+    padding: 30px;
+}
+
 /**
  * Casualty Component
  */

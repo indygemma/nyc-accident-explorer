@@ -800,7 +800,7 @@
                                        :r (fn [element-width] (/ element-width 10))}
                      ; calculate the maxium width
                      :max-element-width (fn [canvas state]
-                                          (let [x (apply max-key :name (:result @state))
+                                          (let [x (apply max-key (fn [x] (count (:name x))) (:result @state))
                                                 w (.-width (.measureText (.getContext canvas "2d") (:name x)))]
                                             w))
                      }
@@ -1030,10 +1030,11 @@
                                                         (component-render-fn state filter-state @dom-node canvas-state))
                                   :update-condition update?
                                   })));  }}}
-(defn hoverable-and-clickable-canvas [width state filter-state canvas-state direction onclick];  {{{
+(defn hoverable-and-clickable-canvas [width height state filter-state canvas-state direction onclick];  {{{
   [:canvas (if (not (:has-result @state))
              {:style {:display "none"}}
              {:width width
+              :height height
               :on-click (fn [e]
                           (let [idx (:hovered-index @state)]
                             (if (not (nil? idx))
@@ -1088,6 +1089,7 @@
                                        [:div#season.with-canvas
                                         [:h2 "Timeline"]
                                         (hoverable-and-clickable-canvas (* 0.9 (.-clientWidth (.-body js/document)))
+                                                                        "200%"
                                                                         state
                                                                         filter-state
                                                                         canvas-state
@@ -1124,6 +1126,7 @@
                                            [:div#year.with-canvas
                                             [:h2 "Year"]
                                             (hoverable-and-clickable-canvas (/ (.-clientWidth (.-body js/document)) 8)
+                                                                            "200%"
                                                                             state
                                                                             filter-state
                                                                             canvas-state
@@ -1159,6 +1162,7 @@
                                          [:div#month.with-canvas
                                           [:h2 "Month"]
                                           (hoverable-and-clickable-canvas (/ (.-clientWidth (.-body js/document)) 4)
+                                                                          "200%"
                                                                           state
                                                                           filter-state
                                                                           canvas-state
@@ -1198,6 +1202,7 @@
                                        [:div#weekday.with-canvas
                                         [:h2 "Weekdays"]
                                         (hoverable-and-clickable-canvas (/ (.-clientWidth (.-body js/document)) 5)
+                                                                        "200%"
                                                                         state
                                                                         filter-state
                                                                         canvas-state
@@ -1407,6 +1412,7 @@
                                                      (str "Boroughs = " (:borough @filter-state))
                                                      "Boroughs")]
                                               (hoverable-and-clickable-canvas (/ (.-clientWidth (.-body js/document)) 5)
+                                                                              "200%"
                                                                               state
                                                                               filter-state
                                                                               canvas-state
@@ -1462,8 +1468,7 @@
     (let [url (str (service-url) "/rpc/stats_vehicle_types_cached_by_filter_accidents?select=name,count")]
         (canvas-base-filtered-component {:name "vehicle-type-component"
                                   :filter-state filter-state
-                                  :canvas-state (atom {:hovering false
-                                                       :positions (list)})
+                                  :canvas-state (atom {:positions (list)})
                                   :state (reagent/atom {:has-result false
                                                         :result (vector)
                                                         :url url
@@ -1472,23 +1477,32 @@
                                                             (reset! state {:result response
                                                                            :url url
                                                                            :last-filter-state @filter-state
-                                                                           :has-result true}))
-                                  :on-draw horizontal-barchart
+                                                                           :has-result true})
+                                                            (swap! canvas-state assoc :positions (vector)))
+                                  :on-draw sample-draw-chart ;horizontal-barchart
+                                  :draw-options (default-horizontal-barchart-options)
                                   :canvas-at (fn [dom-node]
-                                                 (.-nextSibling (.-firstChild dom-node)))
-                                  :component-render (fn [state filter-state dom-node canvas-state]
-                                                        [:div
-                                                         [:h2 "Vehicle Types"]
-                                                         [:canvas (if (not (:has-result @state))
-                                                                      {:style {:display "none"}}
-                                                                      {:width  "800px"
-                                                                       :height "1000px"})]
-                                                         ;(if (:has-result @state)
-                                                             ;[:ul
-                                                              ;(for [item (:result @state)]
-                                                                  ;^{:key item} [:li (:name item) ": " (:count item)])])
-                                                         ]
-                                                        )})));  }}}
+                                               (.-nextSibling (.-firstChild dom-node)))
+                                  :component-render
+                                  (fn [state filter-state dom-node canvas-state]
+                                               [:div#vehicle-types.with-canvas
+                                                [:h2 (if (:borough @filter-state)
+                                                       (str "Vehicle Type: " (:vehicle-type @filter-state))
+                                                       "Vehicle Types")]
+                                                (hoverable-and-clickable-canvas (* (.-clientWidth (.-body js/document)) 0.9)
+                                                                                "500%"
+                                                                                state
+                                                                                filter-state
+                                                                                canvas-state
+                                                                                :horizontal
+                                                                                (fn [filter-state item]
+                                                                                  (swap! filter-state assoc :vehicle-type (:name item)))
+                                                                                )
+                                                ;(if (:has-result @state)
+                                                ;[:ul
+                                                ;(for [item (:result @state)]
+                                                ;^{:key item} [:li (:name item) ": " (:count item)])])
+                                                ])})));  }}}
 
 (defn cluster-component [filter-state];  {{{
     (let [url (str (service-url) "/rpc/stats_cluster_cached_by_filter_accidents?cluster_size=eq.25m&limit=10")]
@@ -1573,10 +1587,10 @@
           [month-component filter-state]
           [weekday-component filter-state]
           ]
+         [vehicle-type-component filter-state]
          [cluster-component filter-state]
          [hour-component filter-state]
          [factor-component filter-state]
-         [vehicle-type-component filter-state]
          [intersection-component filter-state]
          [off-street-component filter-state]
          ]))
