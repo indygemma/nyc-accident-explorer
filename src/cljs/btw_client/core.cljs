@@ -742,18 +742,24 @@
       (if (:debug bar-label-layer-opts)
         (.fillRect ctx (:tl-x x) (:tl-y x) (- (:tr-x x) (:tl-x x)) (- (:br-y x) (:tr-y x)))
         (doseq [[value index] (map vector (:result @state) (range))]
-          (let [mt (.measureText ctx (str (int-comma (:count value))))
+          (let [key (get value (:key bars-layer-opts))
+                mt (.measureText ctx (str (int-comma (:count value))))
                 tw (.-width mt)
-                w  (domain-to-range [0 max-value] [(:tl-x x) (:tr-x x)] (:count value))
-                pos-x (+ (:tl-x x) (* index (:el-w x)) (:el-tl-x x) (/ (:el-w x) 5))
-                pos-y (- (:bl-y x) (:el-bl-y x))
-                hover? (= (:hovered-index @state) index)]
-            (if hover?
-              (do (set! (.-fillStyle ctx) "red"))
-              (do (set! (.-fillStyle ctx) "#fff")))
+                h (domain-to-range [0 max-value] [0 (- (:bl-y x) (:tl-y x))] key)
+                pos1-x (+ (:tl-x x) (* index (:el-w x)) (:el-tl-x x) (/ (:el-w x) 5))
+                pos1-y (+ (- (:bl-y x) h) (:el-tl-x x))
+                pos2-x pos1-x
+                pos2-y (- pos1-y tw (:el-tl-x x) 2)
+                inside? (> h tw)
+                [pos-x pos-y] (if inside? [pos1-x pos1-y]
+                                          [pos2-x pos2-y])]
+            (prn "h: " h " tw: " tw)
+            (if inside?
+              (do (set! (.-fillStyle ctx) "#fff"))
+              (do (set! (.-fillStyle ctx) "#222")))
             (do (.save ctx)
                 (.translate ctx pos-x pos-y)
-                (.rotate ctx  (* -90 (/ (.-PI js/Math) 180)))
+                (.rotate ctx  (* 90 (/ (.-PI js/Math) 180)))
                 (.fillText ctx (str (int-comma (:count value))) 0 0)
                 (.restore ctx))
             ;(.fillText ctx (str (int-comma (:count value))) pos-x pos-y)
