@@ -37,6 +37,7 @@
               :month2 nil
               :hour nil
               :weekday nil
+              :weekday-label nil
               :casualty-type nil
               :borough nil
               :intersection1 nil
@@ -97,11 +98,12 @@
 ;;
 ;; Active Filters Component
 ;;
-(defn removable-filter [filter-state filter-type value];  {{{
+(defn removable-filter [filter-state filter-types value];  {{{
     [:a {:href "#"
          :on-click (fn [e]
                        ;(debug "Removing filter: " value)
-                       (swap! filter-state assoc filter-type nil)
+                       (doseq [ft filter-types]
+                         (swap! filter-state assoc ft nil))
                        false)
          }
      value]);  }}}
@@ -112,6 +114,7 @@
           month2        (:month2 @filter-state)
           hour          (:hour @filter-state)
           weekday       (:weekday @filter-state)
+          weekday-label (:weekday-label @filter-state)
           casualty-type (:casualty-type @filter-state)
           borough       (:borough @filter-state)
           intersection1 (:intersection1 @filter-state)
@@ -124,32 +127,32 @@
          ;[:h5 "Active Filters"
           [:ul
            (if (and (not (nil? year1)) (not (nil? year2)))
-             [:li [:span "From " (removable-filter filter-state :year1 year1) " - " (removable-filter filter-state :year2 year2)]])
+             [:li [:span "From " (removable-filter filter-state [:year1] year1) " - " (removable-filter filter-state [:year2] year2)]])
            (if (and (not (nil? year1)) (nil? year2))
-             [:li [:span "Year: " (removable-filter filter-state :year1 year1)]])
+             [:li [:span "Year: " (removable-filter filter-state [:year1] year1)]])
            (if (not (nil? month1))
-             [:li [:span "Month: " (removable-filter filter-state :month1 month1)]])
+             [:li [:span "Month: " (removable-filter filter-state [:month1] month1)]])
            (if (not (nil? hour))
-             [:li [:span "Time of Day: " (removable-filter filter-state :hour hour)]])
+             [:li [:span "Time of Day: " (removable-filter filter-state [:hour] hour)]])
            (if (not (nil? weekday))
-             [:li [:span "Weekday: " (removable-filter filter-state :weekday weekday)]])
+             [:li [:span "Weekday: " (removable-filter filter-state [:weekday :weekday-label] weekday-label)]])
            (if (not (empty? casualty-type))
-             [:li [:span "Casualty Type: "] (removable-filter filter-state :casualty-type casualty-type)])
+             [:li [:span "Casualty Type: "] (removable-filter filter-state [:casualty-type] casualty-type)])
            (if (not (empty? borough))
-               [:li [:span "Borough: "] (removable-filter filter-state :borough borough)])
+               [:li [:span "Borough: "] (removable-filter filter-state [:borough] borough)])
            (if (and (not (empty? intersection1)) (empty? intersection2))
-               [:li [:span "Street of "] (removable-filter filter-state :intersection1 intersection1)])
+               [:li [:span "Street of "] (removable-filter filter-state [:intersection1] intersection1)])
            (if (and (not (empty? intersection1)) (not (empty? intersection2)))
-               [:li "Intersection at" (removable-filter filter-state :intersection1 intersection1)
-                    " and " (removable-filter filter-state :intersection2 intersection2)])
+               [:li "Intersection at" (removable-filter filter-state [:intersection1] intersection1)
+                    " and " (removable-filter filter-state [:intersection2] intersection2)])
            (if (not (empty? off-street))
-               [:li [:span "Off Street Address: "] (removable-filter filter-state :off-street off-street)])
+               [:li [:span "Off Street Address: "] (removable-filter filter-state [:off-street] off-street)])
            (if (not (empty? vehicle-type))
-               [:li [:span "Vehicle Type: "] (removable-filter filter-state :vehicle-type vehicle-type)])
+               [:li [:span "Vehicle Type: "] (removable-filter filter-state [:vehicle-type] vehicle-type)])
            (if (not (empty? factor))
-               [:li [:span "Contributing Factor: "] (removable-filter filter-state :factor factor)])
+               [:li [:span "Contributing Factor: "] (removable-filter filter-state [:factor] factor)])
            (if (not (nil? cluster-key))
-               [:li [:span "Cluster ID: "] (removable-filter filter-state :cluster-id cluster-key)])
+               [:li [:span "Cluster ID: "] (removable-filter filter-state [:cluster-id] cluster-key)])
            ]]));  }}}
 
 ;;
@@ -1200,7 +1203,16 @@
                                                                         canvas-state
                                                                         :horizontal
                                                                         (fn [filter-state item]
-                                                                          (swap! filter-state assoc :weekday (:name item)))
+                                                                          (let [weekday (case (:name item)
+                                                                                          "Monday" 1
+                                                                                          "Tuesday" 2
+                                                                                          "Wednesday" 3
+                                                                                          "Thursday" 4
+                                                                                          "Friday" 5
+                                                                                          "Saturday" 6
+                                                                                          "Sunday" 7)]
+                                                                            (swap! filter-state assoc :weekday-label (:name item))
+                                                                            (swap! filter-state assoc :weekday weekday)))
                                                                         )
                                         ;(if (:has-result @state)
                                           ;[:ul
