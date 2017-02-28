@@ -442,6 +442,10 @@
     (let [x (:bars result)]
       (.beginPath ctx)
 
+      ;; store the element height (which is variable for horizontal), to determine element lookup on hover
+      (swap! canvas-state assoc :tl-y (:tl-y x))
+      (swap! canvas-state assoc :element-height (:el-h x))
+
             ;; draw grid: 25%
             (let [domain-value (domain-to-range [0 max-value] [(:tl-x x) (:tr-x x)] (/ max-value 4))
                   range-value  (domain-to-range [(:tl-x x) (:tr-x x)] [0 max-value] domain-value)
@@ -512,7 +516,7 @@
               (do (set! (.-fillStyle ctx) "red"))
               (do (set! (.-fillStyle ctx) "darkblue")))
             (.fillRect ctx pos-x pos-y w h)
-            (swap! canvas-state assoc :positions (conj (:positions @canvas-state) [pos-x pos-y (+ pos-x w) (+ pos-y h)]))
+            ;(swap! canvas-state assoc :positions (conj (:positions @canvas-state) [pos-x pos-y (+ pos-x w) (+ pos-y h)]))
             ))
             )
       (.closePath ctx))
@@ -629,7 +633,7 @@
                             (do (set! (.-fillStyle ctx) "darkblue")))
                         (.fillRect ctx x1 y1 vw vh)
                         (.strokeRect ctx x1 y1 vw vh)
-                        (swap! canvas-state assoc :positions (conj (:positions @canvas-state) [x1 y1 x2 y2]))
+                        ;(swap! canvas-state assoc :positions (conj (:positions @canvas-state) [x1 y1 x2 y2]))
                         ;(debug "canvas-state: " canvas-state)
                     )))
             (.closePath ctx)
@@ -728,6 +732,11 @@
                         (set! (.-fillStyle ctx) "#ddd")
                         (.fillText ctx label 5 (+ (- (:h x) domain-value) 10))
                         ))]
+
+      ; for hover and click state
+      (swap! canvas-state assoc :tl-x (:tl-x x))
+      (swap! canvas-state assoc :element-width (:el-w x))
+
       (.beginPath ctx)
 
       ;; draw grids
@@ -752,7 +761,7 @@
               (do (set! (.-fillStyle ctx) "darkblue")))
             (.fillRect ctx pos-x pos-y w h)
             ;(.fillText ctx (str (int-comma (:count value))) pos-x (+ (* index (:el-h x)) (:el-tl-y x)))
-            (swap! canvas-state assoc :positions (conj (:positions @canvas-state) [pos-x pos-y (+ pos-x w) (+ pos-y h)]))
+            ;(swap! canvas-state assoc :positions (conj (:positions @canvas-state) [pos-x pos-y (+ pos-x w) (+ pos-y h)]))
             )))
       (.closePath ctx))
 
@@ -1043,13 +1052,14 @@
               :on-mouse-move
               (fn [event]
                 (let [[mx my]  (get-canvas-position event canvas-state)
-                      xs       (map vector (:positions @canvas-state) (range))
-                      filtered (filter (fn [[[x1 y1 x2 y2] idx]]
-                                         (if (= :horizontal direction)
-                                           (and (>= my y1) (<= my y2))
-                                           (and (>= mx x1) (<= mx x2))))
-                                       xs)
-                      [_ idx]   (first filtered)]
+                      idx (if (= :horizontal direction)
+                            (do (let [tl-y (:tl-y @canvas-state)
+                                      el-h (:element-height @canvas-state)]
+                                  (int (/ (- my tl-y) el-h))))
+                            (do (let [tl-x (:tl-x @canvas-state)
+                                      el-w (:element-width @canvas-state)]
+                                  (int (/ (- mx tl-x) el-w)))))
+                      ]
                   ;(debug "setting hover to idx: " idx)
                   (swap! state assoc :hovered-index idx)))
               :on-mouse-out #(swap! state assoc :hovered-index nil)
