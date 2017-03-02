@@ -126,12 +126,29 @@
         [:div#active-filters
          ;[:h5 "Active Filters"
           [:ul
-           (if (and (not (nil? year1)) (not (nil? year2)))
-             [:li [:span "From " (removable-filter filter-state [:year1] year1) " - " (removable-filter filter-state [:year2] year2)]])
-           (if (and (not (nil? year1)) (nil? year2))
-             [:li [:span "Year: " (removable-filter filter-state [:year1] year1)]])
-           (if (not (nil? month1))
-             [:li [:span "Month: " (removable-filter filter-state [:month1] month1)]])
+           (case [(nil? year1) (nil? month1) (nil? year2) (nil? month2)]
+             ;; only year1
+             [false true true true]
+             [:li [:span "Year: " (removable-filter filter-state [:year1] year1)]]
+             ;; only month1
+             [true false true true]
+             [:li [:span "Month: " (removable-filter filter-state [:month1] month1)]]
+             ;; year1-month1
+             [false false true true]
+             [:li [:span "Year-Month: " (removable-filter filter-state [:year1 :month1] (str year1 "-" month1))]]
+             ;; year2-month2
+             [true true false false]
+             [:li [:span "Year-Month: " (removable-filter filter-state [:year2 :month2] (str year2 "-" month2))]]
+             ;; month1 and month2
+             [true false true false]
+             [:li [:span "Months: " (removable-filter filter-state [:month1 :month2] (str month1 "-" month2))]]
+             ;; year1 and year2
+             [false true false true]
+             [:li [:span "Years: " (removable-filter filter-state [:year1 :year2] (str year1 "-" year2))]]
+             ;; year1 month1 and year2 month2
+             [false false false false]
+             [:li [:span "Timeline: " (removable-filter filter-state [:year1 :month1 :year2 :month2] (str year1 "-" month1 " to " year2 "-" month2))]]
+             [:li])
            (if (not (nil? hour))
              [:li [:span "Time of Day: " (removable-filter filter-state [:hour] hour)]])
            (if (not (nil? weekday))
@@ -685,6 +702,7 @@
         result (calculate-layer-positions :bars canvas bars-layer-opts state result)
         ]
     (.clearRect ctx (- 0 0.5) (- 0 0.5) (- w 0.5) (- h 0.5))
+
     ;; draw labels
     (let [x (:labels result)]
       (.beginPath ctx)
@@ -792,6 +810,24 @@
                 (.restore ctx))
             ;(.fillText ctx (str (int-comma (:count value))) pos-x pos-y)
             )))
+
+      ;; draw the selected range if :mouse-is-down. use (:down-hover-idx @canvas-state) and (:hovered-index @state)
+      (when (:mouse-is-down @canvas-state)
+        (let [[start-idx end-idx] (if (< (:down-hover-idx @canvas-state) (:hovered-index @state))
+                                    [(:down-hover-idx @canvas-state) (:hovered-index @state)]
+                                    [(:hovered-index @canvas-state) (:down-hover-idx @state)])
+              pos-x (+ (:tl-x x) (* (:down-hover-idx @canvas-state) (:el-w x)))
+              pos-y (:tl-y x)
+              rs-w  (+ (- (+ (:tl-x x) (* (:hovered-index @state) (:el-w x)))
+                          pos-x)
+                       (:el-w x))
+              rs-h  (:h x)]
+          (set! (.-fillStyle  ctx) "#000")
+          (prn "selection is active")
+          (set! (.-globalAlpha ctx) 0.5)
+          (.fillRect ctx pos-x pos-y rs-w rs-h)
+          (set! (.-globalAlpha ctx) 1)))
+
       (.closePath ctx))
     ));  }}}
 (defn default-horizontal-barchart-options []
@@ -1039,16 +1075,26 @@
                                                         (component-render-fn state filter-state @dom-node canvas-state))
                                   :update-condition update?
                                   })));  }}}
-(defn hoverable-and-clickable-canvas [width height state filter-state canvas-state direction onclick];  {{{
+(defn hoverable-and-clickable-canvas [width height state filter-state canvas-state direction single-click range-select];  {{{
   [:canvas (if (not (:has-result @state))
              {:style {:display "none"}}
              {:width width
               :height height
+              :on-mouse-up (fn [e]
+                             (swap! canvas-state assoc :mouse-is-down false))
+              :on-mouse-down (fn [e]
+                               (swap! canvas-state assoc :mouse-is-down true)
+                               (swap! canvas-state assoc :down-hover-idx (:hovered-index @state)))
               :on-click (fn [e]
                           (let [idx (:hovered-index @state)]
                             (if (not (nil? idx))
-                              (let [item (nth (:result @state) idx)]
-                                (onclick filter-state item)))))
+                              ; normal click single filter or region filter?
+                              (if (= (:down-hover-idx @canvas-state) idx)
+                                (do (let [item (nth (:result @state) idx)]
+                                      (single-click filter-state item)))
+                                (do (let [item1 (nth (:result @state) (:down-hover-idx @canvas-state))
+                                          item2 (nth (:result @state) idx)]
+                                      (range-select filter-state item1 item2)))))))
               :on-mouse-move
               (fn [event]
                 (let [[mx my]  (get-canvas-position event canvas-state)
@@ -1062,7 +1108,9 @@
                       ]
                   ;(debug "setting hover to idx: " idx)
                   (swap! state assoc :hovered-index idx)))
-              :on-mouse-out #(swap! state assoc :hovered-index nil)
+              :on-mouse-out (fn [e]
+                              (swap! state assoc :hovered-index nil)
+                              (swap! canvas-state assoc :mouse-is-down false))
               :class (if (nil? (:hovered-index @state)) "" "hovered")
               })]);  }}}
 ;;
@@ -1104,9 +1152,25 @@
                                                                         filter-state
                                                                         canvas-state
                                                                         :vertical
+                                                                        ; single-click
                                                                         (fn [filter-state item]
                                                                            (swap! filter-state assoc :year1 (:year item))
-                                                                           (swap! filter-state assoc :month1 (:month item))))
+                                                                           (swap! filter-state assoc :month1 (:month item)))
+                                                                        ; range-select
+                                                                        (fn [filter-state item1 item2]
+                                                                          (let [padded-month (fn [x] (if (< x 10) (str "0" x) x))]
+                                                                            (prn "range select season")
+                                                                            (if (< (js/parseInt (str (str (:year item1)) (padded-month (:month item1))))
+                                                                                   (js/parseInt (str (str (:year item2)) (padded-month (:month item2)))))
+                                                                              (do (swap! filter-state assoc :year1 (:year item1))
+                                                                                  (swap! filter-state assoc :month1 (:month item1))
+                                                                                  (swap! filter-state assoc :year2 (:year item2))
+                                                                                  (swap! filter-state assoc :month2 (:month item2)))
+                                                                              (do (swap! filter-state assoc :year1 (:year item2))
+                                                                                  (swap! filter-state assoc :month1 (:month item2))
+                                                                                  (swap! filter-state assoc :year2 (:year item1))
+                                                                                  (swap! filter-state assoc :month2 (:month item1)))))
+                                                                          ))
                                         ])})));  }}}
 
 ;;
@@ -1141,8 +1205,17 @@
                                                                             filter-state
                                                                             canvas-state
                                                                             :vertical
+                                                                            ; single select
                                                                             (fn [filter-state item]
-                                                                              (swap! filter-state assoc :year1 (:year item))))
+                                                                              (swap! filter-state assoc :year1 (:year item)))
+                                                                            ; range-select
+                                                                            (fn [filter-state item1 item2]
+                                                                              (prn "range select year")
+                                                                              (if (< (:year item1) (:year item2))
+                                                                                (do (swap! filter-state assoc :year1 (:year item1))
+                                                                                    (swap! filter-state assoc :year2 (:year item2)))
+                                                                                (do (swap! filter-state assoc :year1 (:year item2))
+                                                                                    (swap! filter-state assoc :year2 (:year item1))))))
                                             ])})));  }}}
 
 ;;
@@ -1177,9 +1250,18 @@
                                                                           filter-state
                                                                           canvas-state
                                                                           :vertical
+                                                                          ; single select
                                                                           (fn [filter-state item]
                                                                             (swap! filter-state assoc :month1 (:month item)))
-                                                                          )
+                                                                          ; range select
+                                                                          (fn [filter-state item1 item2]
+                                                                            (prn "range select month")
+                                                                            (if (< (:month item1) (:month item2))
+                                                                              (do (swap! filter-state assoc :month1 (:month item1))
+                                                                                  (swap! filter-state assoc :month2 (:month item2)))
+                                                                              (do (swap! filter-state assoc :month1 (:month item2))
+                                                                                  (swap! filter-state assoc :month2 (:month item1))))
+                                                                            ))
                                           ])})
         ));  }}}
 
@@ -1217,6 +1299,7 @@
                                                                         filter-state
                                                                         canvas-state
                                                                         :horizontal
+                                                                        ; single select
                                                                         (fn [filter-state item]
                                                                           (let [weekday (case (:name item)
                                                                                           "Monday" 1
@@ -1228,7 +1311,10 @@
                                                                                           "Sunday" 7)]
                                                                             (swap! filter-state assoc :weekday-label (:name item))
                                                                             (swap! filter-state assoc :weekday weekday)))
-                                                                        )
+                                                                        ; range select
+                                                                        (fn [filter-state item1 item2]
+                                                                          (prn "range select weekday")
+                                                                          ))
                                         ;(if (:has-result @state)
                                           ;[:ul
                                            ;(for [item (:result @state)]
@@ -1265,8 +1351,13 @@
                                                                                        filter-state
                                                                                        canvas-state
                                                                                        :vertical
+                                                                                       ; single select
                                                                                        (fn [filter-state item]
-                                                                                         (swap! filter-state assoc :hour (:hour item))))
+                                                                                         (swap! filter-state assoc :hour (:hour item)))
+                                                                                       ; range select
+                                                                                       (fn [filter-state item1 item2]
+                                                                                         (prn "range select time of day")
+                                                                                         ))
                                                        ])})));  }}}
 
 ;;
@@ -1437,9 +1528,13 @@
                                                                               filter-state
                                                                               canvas-state
                                                                               :horizontal
+                                                                              ; single select
                                                                               (fn [filter-state item]
                                                                                 (swap! filter-state assoc :borough (:name item)))
-                                                                              )
+                                                                              ; range select
+                                                                              (fn [filter-state item1 item2]
+                                                                                (prn "range select borough")
+                                                                                ))
                                               ;(if (:has-result @state)
                                               ;[:ul
                                               ;(for [item (:result @state)]
@@ -1450,7 +1545,7 @@
 ;; Factor Component
 ;;
 (defn factor-component [filter-state];  {{{
-    (let [url (str (service-url) "/rpc/stats_factors_cached_by_filter_accidents?select=name,count")]
+    (let [url (str (service-url) "/rpc/stats_factors_cached_by_filter_accidents?select=name,count&order=count.desc")]
         (canvas-base-filtered-component {:name "factor-component"
                                   :filter-state filter-state
                                   :canvas-state (atom {:hovering false
@@ -1485,7 +1580,7 @@
 ;; Vehicle Type Component
 ;;
 (defn vehicle-type-component [filter-state];  {{{
-    (let [url (str (service-url) "/rpc/stats_vehicle_types_cached_by_filter_accidents?select=name,count")]
+    (let [url (str (service-url) "/rpc/stats_vehicle_types_cached_by_filter_accidents?select=name,count&order=count.desc")]
         (canvas-base-filtered-component {:name "vehicle-type-component"
                                   :filter-state filter-state
                                   :canvas-state (atom {:positions (list)})
@@ -1515,9 +1610,13 @@
                                                                                 filter-state
                                                                                 canvas-state
                                                                                 :horizontal
+                                                                                ; single select
                                                                                 (fn [filter-state item]
                                                                                   (swap! filter-state assoc :vehicle-type (:name item)))
-                                                                                )
+                                                                                ; range select
+                                                                                (fn [filter-state item1 item2]
+                                                                                  (prn "range select vehicle types")
+                                                                                  ))
                                                 ;(if (:has-result @state)
                                                 ;[:ul
                                                 ;(for [item (:result @state)]
