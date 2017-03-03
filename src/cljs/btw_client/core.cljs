@@ -59,10 +59,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Page
 
-(defn header-component []
-  [:div
-   [:h1 "NYC Accident Explorer"]])
-
 ;;generic function
 (defn prompt-message
     "A prompt that will animate to help the user with a given input"
@@ -1721,7 +1717,6 @@
 (defn body-component [state]
     (let [filter-state (reagent/cursor state [:filters])]
         [:div
-         [autocomplete-component filter-state]
          [casualty-component filter-state]
          [:div.flex-row
           [season-component filter-state]
@@ -1751,10 +1746,17 @@
    [:div#right-column
     [:p "This is the footer"]]])
 
+(defn header-component [state]
+  (let [filter-state (reagent/cursor state [:filters])]
+    [:div.flex-row
+     [:div#header
+      [:h1 "NYC Accident Explorer"]]
+     [autocomplete-component filter-state]]))
+
 (defn page [state]
     (fn []
         [:div
-         [header-component]
+         [header-component state]
          [body-component state]
          [footer-component]]))
 

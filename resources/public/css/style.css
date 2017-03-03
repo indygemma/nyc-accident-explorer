@@ -20,6 +20,10 @@ div#app {
     height: 100%;
 }
 
+#header {
+    margin: 12px;
+}
+
 #footer{
     margin-bottom:30px;
     font-size:0.825em;
@@ -55,6 +59,11 @@ div.with-canvas canvas.hovered {
 /**
  * Autocomplete component
  */
+#autocomplete {
+    width: 65%;
+    margin: 12px;
+    padding: 20px;
+}
 #autocomplete-input input {/* {{{*/
     padding: 8px;
     width: 98%;
