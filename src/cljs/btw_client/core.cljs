@@ -730,7 +730,7 @@
                   (.fillText ctx key 0 0)
                   (.restore ctx))
               ; no rotation, but adjust to middle
-              (do (.fillText ctx key (+ pos-x (/ (:el-w x) 4.5))
+              (do (.fillText ctx key pos-x
                                      pos-y))))))
       (.closePath ctx))
 
@@ -772,7 +772,7 @@
                 h  (domain-to-range [0 max-value] [0 (- (:bl-y x) (:tl-y x))] key)
                 pos-x (+ (:tl-x x) (* index (:el-w x)) (:el-tl-x x))
                 pos-y (- (:bl-y x) h)
-                w 20
+                w (:el-tr-x x)
                 hover? (= (:hovered-index @state) index)]
             (if hover?
               (do (set! (.-fillStyle ctx) "red"))
@@ -793,11 +793,11 @@
                 mt (.measureText ctx (str (int-comma (:count value))))
                 tw (.-width mt)
                 h (domain-to-range [0 max-value] [0 (- (:bl-y x) (:tl-y x))] key)
-                pos1-x (+ (:tl-x x) (* index (:el-w x)) (:el-tl-x x) (/ (:el-w x) 5))
-                pos1-y (+ (- (:bl-y x) h) (:el-tl-x x))
+                pos1-x (+ (:tl-x x) (* index (:el-w x)) (:el-tl-x x))
+                pos1-y (+ (- (:bl-y x) h) (:el-tl-y x))
                 pos2-x pos1-x
-                pos2-y (- pos1-y tw (:el-tl-x x) 2)
-                inside? (> h tw)
+                pos2-y (- pos1-y tw (:el-tl-y x) 1.5)
+                inside? (> h (* 2 tw))
                 [pos-x pos-y] (if inside? [pos1-x pos1-y]
                                           [pos2-x pos2-y])]
             (if inside?
@@ -901,7 +901,7 @@
                                                                     element-height))
                                      :b (fn [pos element-height] 0)
                                      :r 0}
-                      :element-padding {:l (fn [element-width]  0)
+                      :element-padding {:l (fn [element-width]  (/ element-width 3))
                                         :t (fn [element-height] (/ element-height 1.6))
                                         :b (fn [element-height] 0)
                                         :r (fn [element-width]  0)}
@@ -920,9 +920,9 @@
                                          :b (fn [pos element-height] (:el-h (:labels pos)))
                                          :r 0
                                          }
-                          :element-padding {:l (fn [element-width]  (/ element-width  10))
-                                            :t (fn [element-height] (/ element-height 1.6))
-                                            :b (fn [element-height] (/ element-height 1.6))
+                          :element-padding {:l (fn [element-width]  (/ element-width  2))
+                                            :t (fn [element-height] (/ element-height 8))
+                                            :b (fn [element-height] (/ element-height 10))
                                             :r (fn [element-width]  (/ element-width  10))}
                           ; calculate the maxium width
                           :max-element-width (fn [canvas state]
@@ -1269,7 +1269,7 @@
 ;; Weekday Component
 ;;
 (defn weekday-component [filter-state];  {{{
-  (let [url (str (service-url) "/rpc/stats_weekday_cached_by_filter_accidents?select=name,count")]
+  (let [url (str (service-url) "/rpc/stats_weekday_cached_by_filter_accidents?select=name,count&order=count.desc")]
     (canvas-base-filtered-component {:name "weekday-component"
                                      :filter-state filter-state
                                      :canvas-state (atom {:positions (vector)})
@@ -1497,7 +1497,7 @@
 ;; Borough Component
 ;;
 (defn borough-component [filter-state];  {{{
-    (let [url (str (service-url) "/rpc/stats_borough_cached_by_filter_accidents?select=name,count")]
+    (let [url (str (service-url) "/rpc/stats_borough_cached_by_filter_accidents?select=name,count&order=count.desc")]
         (canvas-base-filtered-component {:name "borough-component"
                                          :filter-state filter-state
                                          :canvas-state (atom {:positions (vector)})
@@ -1633,11 +1633,11 @@
                                                         :order-by "&order=accident_count.desc"
                                                         :last-filter-state @filter-state})
                                   :update-state-on-load (fn [state filter-state response]
-                                                            (reset! state {:result response
-                                                                           :url (str url (:order-by @state))
-                                                                           :last-filter-state @filter-state
-                                                                           :order-by (:order-by @state)
-                                                                           :has-result true}))
+                                                          (reset! state {:result response
+                                                                         :url (str url (:order-by @state))
+                                                                         :last-filter-state @filter-state
+                                                                         :order-by (:order-by @state)
+                                                                         :has-result true}))
                                   :component-render (fn [state filter-state]
                                                         [:div
                                                          [:h2 "Clusters (Top 10)"]
