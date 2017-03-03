@@ -1,7 +1,7 @@
 var L = {
     "circle": {
         "addTo": function(){}
-    }
+    },
     "map": {
         "setView": function(){}
     },
