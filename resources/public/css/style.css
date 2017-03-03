@@ -102,52 +102,43 @@ div#weekday {
 /**
  * Casualty Component
  */
+#casualty-component {
+  width: 90%;
+  /*padding: 0px;*/
+  /*padding-left: 0px;*/
+}
 #casualty-component ul {/* {{{*/
     list-style: none;
     margin: 0;
     display: flex;
 }/* }}}*/
 #casualty-component li {/* {{{*/
-    margin: 5px;
+    /*margin: 5px;*/
     padding: 15px;
-    /*background: yellow;*/
+    background-color: #444;
     /*border: 1px dashed #eaeaea;*/
 }/* }}}*/
-#casualty-component li.total {/* {{{*/
-    background: #444;
-}/* }}}*/
+#casualty-component li a {
+    color: #fff;
+    text-decoration: none;
+}
+#casualty-component li.active {
+    background: #55818f;
+}
+#casualty-component li.active a {
+    color: #fff;
+}
+#casualty-component li.total {
+    background: #f93a28;
+    /*background: yellow;*/
+    /*color: #444;*/
+}
 #casualty-component li.total a {
-    color: white;
+    /*color: white;*/
     text-decoration: none;
 } 
-#casualty-component li.persons {/* {{{*/
-    background: #444;
-}/* }}}*/
-
-#casualty-component li.persons a {/* {{{*/
-    color: #fff;
-    text-decoration: none;
-}/* }}}*/
-#casualty-component li.motorist {/* {{{*/
-    background: #444;
-}/* }}}*/
-#casualty-component li.motorist a {/* {{{*/
-    color: #fff;
-    text-decoration: none;
-}/* }}}*/
-#casualty-component li.cyclist {/* {{{*/
-    color: #fff;
-    background: #444;
-}/* }}}*/
-#casualty-component li.cyclist a {/* {{{*/
-    color: #fff;
-    text-decoration: none;
-}/* }}}*/
-#casualty-component li.pedestrians {/* {{{*/
-    background: #444;
-}/* }}}*/
-#casualty-component li.pedestrians a {/* {{{*/
-    color: #fff;
+#casualty-component li > a:hover {/* {{{*/
+    color: yellow;
     text-decoration: none;
 }/* }}}*/
 #casualty-component div.label {/* {{{*/
@@ -159,10 +150,6 @@ div#weekday {
     text-align: center;
     font-weight: bold;
     font-size: 2em;
-}/* }}}*/
-#casualty-component li > a:hover {/* {{{*/
-    color: yellow;
-    text-decoration: none;
 }/* }}}*/
 
 /**

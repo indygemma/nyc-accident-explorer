@@ -1464,40 +1464,48 @@
                                                                            ;(:count @state)))
                                                                 ))
                                   :component-render (fn [state filter-state]
-                                                        [:div#casualty-component
-                                                         ;[:h2 "Casualties"]
+                                                      (let [current-filter (:casualty-type @filter-state)]
+                                                        [:div#casualty-component.component
                                                          (if (:has-result @state)
                                                              [:ul
                                                               [:li.total [:a {:href "#" :on-click #(swap! filter-state assoc :casualty-type nil)}
                                                                [:div.value (int-comma (:count @state))]
                                                                [:div.label "Accidents In Total"]]]
-                                                              [:li.persons [:a {:href "#" :on-click #(swap! filter-state assoc :casualty-type "persons_injured")}
+                                                              [:li.persons (if (= "persons_injured" current-filter) {:class "active"} {:class ""})
+                                                               [:a {:href "#" :on-click #(swap! filter-state assoc :casualty-type "persons_injured")}
                                                                [:div.value (int-comma (:total-number-persons-injured @state))]
                                                                [:div.label "Persons Injured"]]]
-                                                              [:li.persons [:a {:href "#" :on-click #(swap! filter-state assoc :casualty-type "persons_killed")}
+                                                              [:li.persons (if (= "persons_killed" current-filter) {:class "active"} {:class ""})
+                                                               [:a {:href "#" :on-click #(swap! filter-state assoc :casualty-type "persons_killed")}
 
                                                                [:div.value (int-comma (:total-number-persons-killed @state))]
                                                                [:div.label "Persons Killed"]]]
-                                                              [:li.motorist [:a {:href "#" :on-click #(swap! filter-state assoc :casualty-type "motorist_injured")}
+                                                              [:li.motorist (if (= "motorist_injured" current-filter) {:class "active"} {:class ""})
+                                                               [:a {:href "#" :on-click #(swap! filter-state assoc :casualty-type "motorist_injured")}
                                                                [:div.value (int-comma (:total-number-motorist-injured @state))]
                                                                [:div.label "Motorist Injured"]]]
-                                                              [:li.motorist [:a {:href "#" :on-click #(swap! filter-state assoc :casualty-type "motorist_killed")}
+                                                              [:li.motorist (if (= "motorist_killed" current-filter) {:class "active"} {:class ""})
+                                                               [:a {:href "#" :on-click #(swap! filter-state assoc :casualty-type "motorist_killed")}
                                                                [:div.value (int-comma (:total-number-motorist-killed @state))]
                                                                [:div.label "Motorist Killed"]]]
-                                                              [:li.cyclist [:a {:href "#" :on-click #(swap! filter-state assoc :casualty-type "cyclist_injured")}
+                                                              [:li.cyclist (if (= "cyclist_injured" current-filter) {:class "active"} {:class ""})
+                                                               [:a {:href "#" :on-click #(swap! filter-state assoc :casualty-type "cyclist_injured")}
                                                                [:div.value (int-comma (:total-number-cyclist-injured @state))]
                                                                [:div.label "Cyclist Injured"]]]
-                                                              [:li.cyclist [:a {:href "#" :on-click #(swap! filter-state assoc :casualty-type "cyclist_killed")}
+                                                              [:li.cyclist (if (= "cyclist_killed" current-filter) {:class "active"} {:class ""})
+                                                               [:a {:href "#" :on-click #(swap! filter-state assoc :casualty-type "cyclist_killed")}
                                                                [:div.value (int-comma (:total-number-cyclist-killed @state))]
                                                                [:div.label "Cyclist Killed"]]]
-                                                              [:li.pedestrians [:a {:href "#" :on-click #(swap! filter-state assoc :casualty-type "pedestrians_injured")}
+                                                              [:li.pedestrians (if (= "pedestrians_injured" current-filter) {:class "active"} {:class ""})
+                                                               [:a {:href "#" :on-click #(swap! filter-state assoc :casualty-type "pedestrians_injured")}
                                                                [:div.value (int-comma (:total-number-pedestrians-injured @state))]
                                                                [:div.label "Pedestrians Injured"]]]
-                                                              [:li.pedestrians [:a {:href "#" :on-click #(swap! filter-state assoc :casualty-type "pedestrians_killed")}
+                                                              [:li.pedestrians (if (= "pedestrians_killed" current-filter) {:class "active"} {:class ""})
+                                                               [:a {:href "#" :on-click #(swap! filter-state assoc :casualty-type "pedestrians_killed")}
                                                                [:div.value (int-comma (:total-number-pedestrians-killed @state))]
                                                                [:div.label "Pedestrians Killed"]]]
                                                               ])]
-                                                        )})));  }}}
+                                                        ))})));  }}}
 
 ;;
 ;; Borough Component
