@@ -167,3 +167,7 @@ div#weekday {
 #active-filters ul {
     display: flex;
 }
+
+#cluster #map {
+    height: 700px;
+}

@@ -1660,23 +1660,32 @@
                                                                          :last-filter-state @filter-state
                                                                          :order-by (:order-by @state)
                                                                          :has-result true}))
+                                  :component-did-update
+                                  (fn [this state]
+                                    (let [el (first (:result @state))
+                                          [lat lng] (:coordinates (:cluster_position el))
+                                          url "https://api.mapbox.com/styles/v1/mapbox/light-v9/tiles/256/{z}/{x}/{y}?access_token=pk.eyJ1IjoiaW5keWdlbW1hIiwiYSI6ImNpenR1NzRqZDAyM2kycW9nbnFuNHM5eGUifQ.opwt6_bQ9Aw4RdKBS9kv2Q"
+                                          the-map (.setView (.map js/L "map") #js [lat lng] 13)]
+                                      (.addTo (.tileLayer js/L url
+                                                          (clj->js {:attribution "Map data &copy; <a href=\"http://openstreetmap.org\">OpenStreetMap</a> contributors, <a href=\"http://creativecommons.org/licenses/by-sa/2.0/\">CC-BY-SA</a>, Imagery © <a href=\"http://mapbox.com\">Mapbox</a>"
+                                                                    :maxZoom 18}))
+                                              the-map)
+                                      (doseq [el (:result @state)]
+                                        (prn "------" (second (:coordinates (:cluster_position el))))
+                                        (let [[lat lng] (:coordinates (:cluster_position el))
+                                              circle    (.circle js/L #js [lat lng] (clj->js {:color "red"
+                                                                                          :fillColor "#f03"
+                                                                                          :fillOpacity 0.5
+                                                                                          :radius 500}))]
+                                          ;(.addTo circle the-map)
+                                          (prn lat lng circle)
+                                          ))))
                                   :component-render (fn [state filter-state]
-                                                        [:div
-                                                         [:h2 "Clusters (Top 10)"]
-                                                         ;[:select {:value (:order-by @state) :on-change (fn [e]
-                                                                                                            ;(swap! state assoc :order-by (-> e .-target .-value)))}
-                                                          ;[:option {:value "&order=accident_count.desc"}"by accident count"]
-                                                          ;[:option {:value "&order=total_number_persons_injured.desc"}"by persons injured"]
-                                                          ;[:option {:value "&order=total_number_persons_killed.desc"}"by persons killed"]
-                                                          ;[:option {:value "&order=total_number_cyclist_injured.desc"}"by cyclist injured"]
-                                                          ;[:option {:value "&order=total_number_cyclist_killed.desc"}"by cyclist killed"]
-                                                          ;[:option {:value "&order=total_number_pedestrians_injured.desc"}"by pedestrians injured"]
-                                                          ;[:option {:value "&order=total_number_pedestrians_killed.desc"}"by pedestrians killed"]
-                                                          ;[:option {:value "&order=total_number_motorist_injured.desc"}"by motorist injured"]
-                                                          ;[:option {:value "&order=total_number_motorist_killed.desc"}"by motorist killed"]
-                                                          ;]
+                                                        [:div#cluster.component
+                                                         [:h3 "Clusters (Top 10)"]
                                                          (if (:has-result @state)
-                                                             [:ul
+                                                           [:div
+                                                             [:ol
                                                               ;{:cluster_key 1500, :cluster_number_persons_injured 252, :accident_count 275, :cluster_number_cyclist_killed 0, :total_number_cyclist_killed 0, :total_number_motorist_injured 4, :cluster_size "40m", :cluster_number_cyclist_injured 34, :total_number_pedestrians_injured 5, :total_number_persons_injured 9, :total_number_motorist_killed 0, :cluster_number_persons_killed 1, :cluster_number_motorist_injured 88, :cluster_number_motorist_killed 0, :total_number_persons_killed 0, :cluster_number_pedestrians_injured 130, :cluster_number_pedestrians_killed 1, :total_number_cyclist_injured 0, :cluster_count 2257}
                                                               (for [item (:result @state)]
                                                                   ^{:key item} [:li [:a {:href "#" :on-click (fn [e]
@@ -1692,7 +1701,8 @@
                                                                                       [:li "cyclist killed " (:total_number_cyclist_killed item) "/" (:cluster_number_cyclist_killed item)]
                                                                                       [:li "motorist injured " (:total_number_motorist_injured item) "/" (:cluster_number_motorist_injured item)]
                                                                                       [:li "motorist killed " (:total_number_motorist_killed item) "/" (:cluster_number_motorist_killed item)]
-                                                                                      ]]])])]
+                                                                                      ]]])]
+                                                             [:div#map]])]
                                                         )})));  }}}
 
 (defn setup-filter-controller [filter-state]

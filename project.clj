@@ -38,7 +38,9 @@
                     :output-dir           "resources/public/js/compiled/dev"
                     :asset-path           "js/compiled/dev"
                     :source-map-timestamp true
-                    :source-map           true}}
+                    :source-map           true
+                    :externs              ["externs.js"]
+                    }}
 
     {:id           "min"
      :source-paths ["src/cljs"]
@@ -47,6 +49,8 @@
                     :output-to       "resources/public/js/compiled/app.js"
                     :output-dir      "resources/public/js/compiled/min"
                     :closure-defines {goog.DEBUG false}
-                    :pretty-print    false}}
+                    :pretty-print    false
+                    :externs         ["externs.js"]
+                    }}
 
     ]})
