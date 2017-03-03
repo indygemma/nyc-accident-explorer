@@ -50,6 +50,12 @@
     :filtered-result  0 ; This is the actual value that is being filtered with (total accident count, persons injured etc.)
     }))
 
+(def bar-color "#396fc7")
+(def label-color "#6d6d6d")
+(def hover-color "red")
+(def grid-stroke "#ddd")
+(def grid-label-color "#ccc")
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Page
 
@@ -451,8 +457,8 @@
                         (+ (:tl-x x) (:el-tl-x x)))
                 hover? (= (:hovered-index @state) index)]
             (if hover?
-              (do (set! (.-fillStyle ctx) "red"))
-              (do (set! (.-fillStyle ctx) "black")))
+              (do (set! (.-fillStyle ctx) hover-color))
+              (do (set! (.-fillStyle ctx) label-color)))
             (.fillText ctx (:name value) pos-x (+ (* index (:el-h x)) (:el-tl-y x))))))
       (.closePath ctx))
     ;; draw bars
@@ -468,13 +474,13 @@
                   range-value  (domain-to-range [(:tl-x x) (:tr-x x)] [0 max-value] domain-value)
                   percentage   (* (/ range-value total-accidents) 100)
                   label        (str (int percentage) "%")]
-              (set! (.-strokeStyle ctx) "#ddd")
+              (set! (.-strokeStyle ctx) grid-stroke)
               ;; draw middle point verticle line
               (.setLineDash ctx (array 3 2))
               (.moveTo ctx domain-value 0)
               (.lineTo ctx domain-value (:bl-y x))
               (.stroke ctx)
-              (set! (.-fillStyle ctx) "#ddd")
+              (set! (.-fillStyle ctx) grid-label-color)
               (.fillText ctx label (- domain-value (/ (.-width (.measureText ctx label)) 2)) (+ (:br-y x) (:el-tl-y x))))
 
             ;; draw grid: 50%
@@ -482,13 +488,13 @@
                   range-value  (domain-to-range [(:tl-x x) (:tr-x x)] [0 max-value] domain-value)
                   percentage   (* (/ range-value total-accidents) 100)
                   label        (str (int percentage) "%")]
-              (set! (.-strokeStyle ctx) "#ddd")
+              (set! (.-strokeStyle ctx) grid-stroke)
               ;; draw middle point verticle line
               (.setLineDash ctx (array 3 2))
               (.moveTo ctx domain-value 0)
               (.lineTo ctx domain-value (:bl-y x))
               (.stroke ctx)
-              (set! (.-fillStyle ctx) "#ddd")
+              (set! (.-fillStyle ctx) grid-label-color)
               (.fillText ctx label (- domain-value (/ (.-width (.measureText ctx label)) 2)) (+ (:br-y x) (:el-tl-y x))))
 
             ;; draw grid: 75%
@@ -496,13 +502,13 @@
                   range-value  (domain-to-range [(:tl-x x) (:tr-x x)] [0 max-value] domain-value)
                   percentage   (* (/ range-value total-accidents) 100)
                   label        (str (int percentage) "%")]
-              (set! (.-strokeStyle ctx) "#ddd")
+              (set! (.-strokeStyle ctx) grid-stroke)
               ;; draw middle point verticle line
               (.setLineDash ctx (array 3 2))
               (.moveTo ctx domain-value 0)
               (.lineTo ctx domain-value (:bl-y x))
               (.stroke ctx)
-              (set! (.-fillStyle ctx) "#ddd")
+              (set! (.-fillStyle ctx) grid-label-color)
               (.fillText ctx label (- domain-value (/ (.-width (.measureText ctx label)) 2)) (+ (:br-y x) (:el-tl-y x))))
 
             ;; draw grid: 100%
@@ -510,13 +516,13 @@
                   range-value  (domain-to-range [(:tl-x x) (:tr-x x)] [0 max-value] domain-value)
                   percentage   (* (/ range-value total-accidents) 100)
                   label        (str (int percentage) "%")]
-              (set! (.-strokeStyle ctx) "#ddd")
+              (set! (.-strokeStyle ctx) grid-stroke)
               ;; draw middle point verticle line
               (.setLineDash ctx (array 3 2))
               (.moveTo ctx domain-value 0)
               (.lineTo ctx domain-value (:bl-y x))
               (.stroke ctx)
-              (set! (.-fillStyle ctx) "#ddd")
+              (set! (.-fillStyle ctx) grid-label-color)
               (.fillText ctx label (- domain-value (/ (.-width (.measureText ctx label)) 2)) (+ (:br-y x) (:el-tl-y x))))
 
       (if (:debug bars-layer-opts)
@@ -531,7 +537,7 @@
                 pos-y (+ (* index (:el-h x)) (:el-tl-y x))]
             (if hover?
               (do (set! (.-fillStyle ctx) "red"))
-              (do (set! (.-fillStyle ctx) "darkblue")))
+              (do (set! (.-fillStyle ctx) bar-color)))
             (.fillRect ctx pos-x pos-y w h)
             ;(swap! canvas-state assoc :positions (conj (:positions @canvas-state) [pos-x pos-y (+ pos-x w) (+ pos-y h)]))
             ))
@@ -552,8 +558,8 @@
                         (+ (:tl-x x) (:el-tl-x x)))
                 hover? (= (:hovered-index @state) index)]
             (if hover?
-              (do (set! (.-fillStyle ctx) "red"))
-              (do (set! (.-fillStyle ctx) "black")))
+              (do (set! (.-fillStyle ctx) hover-color))
+              (do (set! (.-fillStyle ctx) label-color)))
             (.fillText ctx (str (int-comma (:count value))) (+ (:el-tl-x x) w) (+ (* index (:el-h x)) (:el-tl-y x)))
             )))
       (.closePath ctx))
@@ -586,39 +592,39 @@
             (set! (.-font ctx) (str "10px sans-serif"))
 
             (.beginPath ctx)
-            (set! (.-strokeStyle ctx) "#ddd")
+            (set! (.-strokeStyle ctx) grid-stroke)
             ;; draw middle point verticle line
             (.setLineDash ctx (array 3 2))
             (.moveTo ctx (domain-to-range [0 max-value] [sw ew] (/ max-value 4)) 0)
             (.lineTo ctx (domain-to-range [0 max-value] [sw ew] (/ max-value 4)) (- h pad-h))
             (.stroke ctx)
-            (set! (.-fillStyle ctx) "#ddd")
+            (set! (.-fillStyle ctx) grid-label-color)
             (.fillText ctx "25%" (- (domain-to-range [0 max-value] [sw ew] (/ max-value 4))
                                     (/ (.-width (.measureText ctx "25%")) 2))
                        h)
             (.closePath ctx)
 
             (.beginPath ctx)
-            (set! (.-strokeStyle ctx) "#ddd")
+            (set! (.-strokeStyle ctx) grid-stroke)
             ;; draw middle point verticle line
             (.setLineDash ctx (array 3 2))
             (.moveTo ctx (domain-to-range [0 max-value] [sw ew] (/ max-value 2)) 0)
             (.lineTo ctx (domain-to-range [0 max-value] [sw ew] (/ max-value 2)) (- h pad-h))
             (.stroke ctx)
-            (set! (.-fillStyle ctx) "#ddd")
+            (set! (.-fillStyle ctx) grid-label-color)
             (.fillText ctx "50%" (- (domain-to-range [0 max-value] [sw ew] (/ max-value 2))
                                     (/ (.-width (.measureText ctx "50%")) 2))
                        h)
             (.closePath ctx)
 
             (.beginPath ctx)
-            (set! (.-strokeStyle ctx) "#ddd")
+            (set! (.-strokeStyle ctx) grid-stroke)
             ;; draw middle point verticle line
             (.setLineDash ctx (array 3 2))
             (.moveTo ctx (domain-to-range [0 max-value] [sw ew] (* max-value 0.75)) 0)
             (.lineTo ctx (domain-to-range [0 max-value] [sw ew] (* max-value 0.75)) (- h pad-h))
             (.stroke ctx)
-            (set! (.-fillStyle ctx) "#ddd")
+            (set! (.-fillStyle ctx) grid-label-color)
             (.fillText ctx "75%" (- (domain-to-range [0 max-value] [sw ew] (* max-value 0.75))
                                     (/ (.-width (.measureText ctx "75%")) 2))
                        h)
@@ -626,7 +632,7 @@
 
             (.beginPath ctx)
             (.setLineDash ctx (array 0))
-            ;(set! (.-strokeStyle ctx) "#ddd")
+            ;(set! (.-strokeStyle ctx) grid-stroke)
             ;; draw grid
             ;(doseq [index (range 0 h single-h)]
             ;(.moveTo ctx sw index)
@@ -634,7 +640,7 @@
             ;(.moveTo ctx sw h)
             ;(.lineTo ctx w  h)
             ;(.stroke ctx)
-            ;(set! (.-fillStyle ctx) "darkblue")
+            ;(set! (.-fillStyle ctx) bar-color)
             (set! (.-strokeStyle ctx) "#fff")
             (let [padding-h (/ single-h 7)]
                 (doseq [[value index] (map vector (:result @state) (range))]
@@ -647,7 +653,7 @@
                           hover? (= (:hovered-index @state) index)]
                         (if hover?
                             (do (set! (.-fillStyle ctx) "red"))
-                            (do (set! (.-fillStyle ctx) "darkblue")))
+                            (do (set! (.-fillStyle ctx) bar-color)))
                         (.fillRect ctx x1 y1 vw vh)
                         (.strokeRect ctx x1 y1 vw vh)
                         ;(swap! canvas-state assoc :positions (conj (:positions @canvas-state) [x1 y1 x2 y2]))
@@ -659,15 +665,15 @@
             (let [font-size (* 0.35 single-h)]
             (set! (.-font ctx) (str font-size "px sans-serif")))
             ;; draw names (at each row)
-            (set! (.-fillStyle ctx) "black")
+            (set! (.-fillStyle ctx) label-color)
             ;(set! (.-font-weight ctx) "bolder")
             (doseq [[value index] (map vector (:result @state) (range))]
                 (let [mt (.measureText ctx (:name value))
                       tw (.-width mt)
                       hover? (= (:hovered-index @state) index)]
                   (if hover?
-                    (do (set! (.-fillStyle ctx) "red"))
-                    (do (set! (.-fillStyle ctx) "black")))
+                    (do (set! (.-fillStyle ctx) hover-color))
+                    (do (set! (.-fillStyle ctx) label-color)))
                   (.fillText ctx (:name value) (- w tw) (+ (* index single-h) (/ single-h 1.6)))))
 
             ;; draw values after each bar (if possible)
@@ -701,7 +707,7 @@
         bars-layer-opts (:bars (:layers draw-opts))
         result (calculate-layer-positions :bars canvas bars-layer-opts state result)
         ]
-    (.clearRect ctx (- 0 0.5) (- 0 0.5) (- w 0.5) (- h 0.5))
+    (.clearRect ctx (- 0 0.5) (- 0 0.5) (+ w 0.5) (- h 0.5))
 
     ;; draw labels
     (let [x (:labels result)]
@@ -721,8 +727,8 @@
                 hover? (= (:hovered-index @state) index)
                 rotate? (not (nil? (:rotate label-layer-opts)))]
             (if hover?
-              (do (set! (.-fillStyle ctx) "red"))
-              (do (set! (.-fillStyle ctx) "black")))
+              (do (set! (.-fillStyle ctx) hover-color))
+              (do (set! (.-fillStyle ctx) label-color)))
             (if rotate?
               (do (.save ctx)
                   (.translate ctx pos-x pos-y)
@@ -741,13 +747,13 @@
                             range-value  (domain-to-range [(:tl-y x) (:bl-y x)] [0 max-value] domain-value)
                             percentage   (* (/ range-value total-accidents) 100)
                             label        (str (int percentage) "%")]
-                        (set! (.-strokeStyle ctx) "#ddd")
+                        (set! (.-strokeStyle ctx) grid-stroke)
                         ;; draw middle point verticle line
                         (.setLineDash ctx (array 3 2))
                         (.moveTo ctx 30 (- (:h x) domain-value))
                         (.lineTo ctx w  (- (:h x) domain-value))
                         (.stroke ctx)
-                        (set! (.-fillStyle ctx) "#ddd")
+                        (set! (.-fillStyle ctx) grid-label-color)
                         (.fillText ctx label 5 (+ (- (:h x) domain-value) 10))
                         ))]
 
@@ -776,7 +782,7 @@
                 hover? (= (:hovered-index @state) index)]
             (if hover?
               (do (set! (.-fillStyle ctx) "red"))
-              (do (set! (.-fillStyle ctx) "darkblue")))
+              (do (set! (.-fillStyle ctx) bar-color)))
             (.fillRect ctx pos-x pos-y w h)
             ;(.fillText ctx (str (int-comma (:count value))) pos-x (+ (* index (:el-h x)) (:el-tl-y x)))
             ;(swap! canvas-state assoc :positions (conj (:positions @canvas-state) [pos-x pos-y (+ pos-x w) (+ pos-y h)]))
@@ -1144,8 +1150,8 @@
                                      :canvas-at (fn [dom-node] (.-nextSibling (.-firstChild dom-node)))
                                      :component-render
                                      (fn [state filter-state dom-node canvas-state]
-                                       [:div#season.with-canvas
-                                        [:h2 "Timeline"]
+                                       [:div#season.with-canvas.component
+                                        [:h3 "Timeline"]
                                         (hoverable-and-clickable-canvas (* 0.9 (.-clientWidth (.-body js/document)))
                                                                         "200%"
                                                                         state
@@ -1197,9 +1203,9 @@
                                          :canvas-at (fn [dom-node] (.-nextSibling (.-firstChild dom-node)))
                                          :component-render
                                          (fn [state filter-state dom-node canvas-state]
-                                           [:div#year.with-canvas
-                                            [:h2 "Year"]
-                                            (hoverable-and-clickable-canvas (/ (.-clientWidth (.-body js/document)) 8)
+                                           [:div#year.with-canvas.component
+                                            [:h3 "Year"]
+                                            (hoverable-and-clickable-canvas (/ (.-clientWidth (.-body js/document)) 4)
                                                                             "200%"
                                                                             state
                                                                             filter-state
@@ -1242,8 +1248,8 @@
                                        :canvas-at (fn [dom-node] (.-nextSibling (.-firstChild dom-node)))
                                        :component-render
                                        (fn [state filter-state dom-node canvas-state]
-                                         [:div#month.with-canvas
-                                          [:h2 "Month"]
+                                         [:div#month.with-canvas.component
+                                          [:h3 "Month"]
                                           (hoverable-and-clickable-canvas (/ (.-clientWidth (.-body js/document)) 4)
                                                                           "200%"
                                                                           state
@@ -1291,9 +1297,9 @@
                                                   (.-nextSibling (.-firstChild dom-node)))
                                      :component-render
                                      (fn [state filter-state dom-node canvas-state]
-                                       [:div#weekday.with-canvas
-                                        [:h2 "Weekdays"]
-                                        (hoverable-and-clickable-canvas (/ (.-clientWidth (.-body js/document)) 5)
+                                       [:div#weekday.with-canvas.component
+                                        [:h3 "Weekdays"]
+                                        (hoverable-and-clickable-canvas (/ (.-clientWidth (.-body js/document)) 3)
                                                                         "200%"
                                                                         state
                                                                         filter-state
@@ -1343,8 +1349,8 @@
                                   :draw-options (default-vertical-barchart-options (fn [x] (:hour x)) (fn [x] (str (:hour x))) :count 0)
                                   :canvas-at (fn [dom-node] (.-nextSibling (.-firstChild dom-node)))
                                   :component-render (fn [state filter-state dom-node canvas-state]
-                                                      [:div#hour.with-canvas
-                                                       [:h2 "Time of Day"]
+                                                      [:div#hour.with-canvas.component
+                                                       [:h3 "Time of Day"]
                                                        (hoverable-and-clickable-canvas (/ (.-clientWidth (.-body js/document)) 3)
                                                                                        "200%"
                                                                                        state
@@ -1518,11 +1524,11 @@
                                                         (.-nextSibling (.-firstChild dom-node)))
                                          :component-render
                                          (fn [state filter-state dom-node canvas-state]
-                                             [:div#boroughs.with-canvas
-                                              [:h2 (if (:borough @filter-state)
+                                             [:div#boroughs.with-canvas.component
+                                              [:h3 (if (:borough @filter-state)
                                                      (str "Boroughs = " (:borough @filter-state))
                                                      "Boroughs")]
-                                              (hoverable-and-clickable-canvas (/ (.-clientWidth (.-body js/document)) 5)
+                                              (hoverable-and-clickable-canvas (/ (.-clientWidth (.-body js/document)) 4)
                                                                               "200%"
                                                                               state
                                                                               filter-state
@@ -1545,7 +1551,7 @@
 ;; Factor Component
 ;;
 (defn factor-component [filter-state];  {{{
-    (let [url (str (service-url) "/rpc/stats_factors_cached_by_filter_accidents?select=name,count&order=count.desc")]
+    (let [url (str (service-url) "/rpc/stats_factors_cached_by_filter_accidents?select=name,count&order=count.desc&limit=20")]
         (canvas-base-filtered-component {:name "factor-component"
                                   :filter-state filter-state
                                   :canvas-state (atom {:hovering false
@@ -1559,22 +1565,34 @@
                                                                            :url url
                                                                            :last-filter-state @filter-state
                                                                            :has-result true}))
-                                  :on-draw horizontal-barchart
+                                  :on-draw sample-draw-chart ;horizontal-barchart
+                                  :draw-options (default-horizontal-barchart-options)
                                   :canvas-at (fn [dom-node]
-                                                 (.-nextSibling (.-firstChild dom-node)))
-                                  :component-render (fn [state filter-state dom-node canvas-state]
-                                                        [:div#factors.with-canvas
-                                                         [:h2 "Factors"]
-                                                         [:canvas (if (not (:has-result @state))
-                                                                      {:style {:display "none"}}
-                                                                      {:width  "800px"
-                                                                       :height "1000px"})]
-                                                         ;(if (:has-result @state)
-                                                             ;[:ul
-                                                              ;(for [item (:result @state)]
-                                                                  ;^{:key item} [:li (:name item) ": " (:count item)])])
-                                                         ]
-                                                        )})));  }}}
+                                               (.-nextSibling (.-firstChild dom-node)))
+                                  :component-render
+                                  (fn [state filter-state dom-node canvas-state]
+                                               [:div#factors.with-canvas.component
+                                                [:h3 (if (:factor @filter-state)
+                                                       (str "Factor: " (:factor @filter-state))
+                                                       "Factors (Top 20)")]
+                                                (hoverable-and-clickable-canvas (* (.-clientWidth (.-body js/document)) 0.4)
+                                                                                "500%"
+                                                                                state
+                                                                                filter-state
+                                                                                canvas-state
+                                                                                :horizontal
+                                                                                ; single select
+                                                                                (fn [filter-state item]
+                                                                                  (swap! filter-state assoc :factor (:name item)))
+                                                                                ; range select
+                                                                                (fn [filter-state item1 item2]
+                                                                                  (prn "range select vehicle types")
+                                                                                  ))
+                                                ;(if (:has-result @state)
+                                                ;[:ul
+                                                ;(for [item (:result @state)]
+                                                ;^{:key item} [:li (:name item) ": " (:count item)])])
+                                                ])})));  }}}
 
 ;;
 ;; Vehicle Type Component
@@ -1600,11 +1618,11 @@
                                                (.-nextSibling (.-firstChild dom-node)))
                                   :component-render
                                   (fn [state filter-state dom-node canvas-state]
-                                               [:div#vehicle-types.with-canvas
-                                                [:h2 (if (:borough @filter-state)
+                                               [:div#vehicle-types.with-canvas.component
+                                                [:h3 (if (:borough @filter-state)
                                                        (str "Vehicle Type: " (:vehicle-type @filter-state))
                                                        "Vehicle Types")]
-                                                (hoverable-and-clickable-canvas (* (.-clientWidth (.-body js/document)) 0.5)
+                                                (hoverable-and-clickable-canvas (* (.-clientWidth (.-body js/document)) 0.4)
                                                                                 "500%"
                                                                                 state
                                                                                 filter-state
@@ -1704,14 +1722,16 @@
           [borough-component filter-state]
           [year-component filter-state]
           [month-component filter-state]
-          [weekday-component filter-state]
           ]
          [:div.flex-row
-          [vehicle-type-component filter-state]
+          [weekday-component filter-state]
           [hour-component filter-state]
          ]
+         [:div.flex-row
+          [vehicle-type-component filter-state]
+          [factor-component filter-state]
+         ]
          [cluster-component filter-state]
-         [factor-component filter-state]
          [intersection-component filter-state]
          [off-street-component filter-state]
          ]))
