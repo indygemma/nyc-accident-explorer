@@ -1646,7 +1646,9 @@
                                                 ])})));  }}}
 
 (defn cluster-component [filter-state];  {{{
-    (let [url (str (service-url) "/rpc/stats_cluster_cached_by_filter_accidents?cluster_size=eq.25m&limit=10")]
+    (let [the-map (atom nil)
+          cluster-markers (atom nil)
+          url (str (service-url) "/rpc/stats_cluster_cached_by_filter_accidents?cluster_size=eq.25m&limit=10")]
         (base-filtered-component {:name "cluster-component"
                                   :filter-state filter-state
                                   :state (reagent/atom {:has-result false
@@ -1662,30 +1664,47 @@
                                                                          :has-result true}))
                                   :component-did-update
                                   (fn [this state]
-                                    (let [el (first (:result @state))
-                                          [lat lng] (:coordinates (:cluster_position el))
-                                          url "https://api.mapbox.com/styles/v1/mapbox/light-v9/tiles/256/{z}/{x}/{y}?access_token=pk.eyJ1IjoiaW5keWdlbW1hIiwiYSI6ImNpenR1NzRqZDAyM2kycW9nbnFuNHM5eGUifQ.opwt6_bQ9Aw4RdKBS9kv2Q"
-                                          the-map (.setView (.map js/L "map") #js [lat lng] 13)]
+                                    (let [[lat lng] (:coordinates (:cluster_position (first (:result @state))))
+                                          zoom-level (if (nil? (:cluster-id @filter-state))
+                                                       13 ; general listing
+                                                       19 ; zoom into a specific cluster
+                                                       )
+                                          ]
+                                      ; clear everything first
+                                      (.clearLayers @cluster-markers)
+                                      ; the default view is the first cluster
+                                      (.setView @the-map #js [lat lng] zoom-level)
+                                      (doseq [el (:result @state)]
+                                        (let [[lat lng] (:coordinates (:cluster_position el))
+                                              circle    (.circle js/L #js [lat lng] 75 (clj->js {:color "red"
+                                                                                                   :fillColor "#f03"
+                                                                                                   :fillOpacity 0.5
+                                                                                                   :radius 2}))]
+                                          (.addLayer @cluster-markers circle)
+                                          ))))
+                                  :component-did-mount
+                                  (fn [this]
+                                    (let [url "https://api.mapbox.com/styles/v1/mapbox/light-v9/tiles/256/{z}/{x}/{y}?access_token=pk.eyJ1IjoiaW5keWdlbW1hIiwiYSI6ImNpenR1NzRqZDAyM2kycW9nbnFuNHM5eGUifQ.opwt6_bQ9Aw4RdKBS9kv2Q"
+                                          m (.setView (.map js/L "map") #js [40.7572323 -73.9897922] 13)
+                                          markers (.layerGroup js/L)
+                                          ]
                                       (.addTo (.tileLayer js/L url
                                                           (clj->js {:attribution "Map data &copy; <a href=\"http://openstreetmap.org\">OpenStreetMap</a> contributors, <a href=\"http://creativecommons.org/licenses/by-sa/2.0/\">CC-BY-SA</a>, Imagery © <a href=\"http://mapbox.com\">Mapbox</a>"
                                                                     :maxZoom 18}))
-                                              the-map)
-                                      (doseq [el (:result @state)]
-                                        (prn "------" (second (:coordinates (:cluster_position el))))
-                                        (let [[lat lng] (:coordinates (:cluster_position el))
-                                              circle    (.circle js/L #js [lat lng] (clj->js {:color "red"
-                                                                                          :fillColor "#f03"
-                                                                                          :fillOpacity 0.5
-                                                                                          :radius 500}))]
-                                          ;(.addTo circle the-map)
-                                          (prn lat lng circle)
-                                          ))))
+                                              m)
+                                      ; create and set the cluster-markers once
+                                      (.addTo markers m)
+                                      (reset! the-map m)
+                                      (reset! cluster-markers markers)
+                                      ))
                                   :component-render (fn [state filter-state]
                                                         [:div#cluster.component
                                                          [:h3 "Clusters (Top 10)"]
+                                                         [:div.flex-row
+                                                          [:div#outer-map
+                                                           [:div#map]]
                                                          (if (:has-result @state)
-                                                           [:div
-                                                             [:ol
+                                                           [:ol
                                                               ;{:cluster_key 1500, :cluster_number_persons_injured 252, :accident_count 275, :cluster_number_cyclist_killed 0, :total_number_cyclist_killed 0, :total_number_motorist_injured 4, :cluster_size "40m", :cluster_number_cyclist_injured 34, :total_number_pedestrians_injured 5, :total_number_persons_injured 9, :total_number_motorist_killed 0, :cluster_number_persons_killed 1, :cluster_number_motorist_injured 88, :cluster_number_motorist_killed 0, :total_number_persons_killed 0, :cluster_number_pedestrians_injured 130, :cluster_number_pedestrians_killed 1, :total_number_cyclist_injured 0, :cluster_count 2257}
                                                               (for [item (:result @state)]
                                                                   ^{:key item} [:li [:a {:href "#" :on-click (fn [e]
@@ -1701,8 +1720,8 @@
                                                                                       [:li "cyclist killed " (:total_number_cyclist_killed item) "/" (:cluster_number_cyclist_killed item)]
                                                                                       [:li "motorist injured " (:total_number_motorist_injured item) "/" (:cluster_number_motorist_injured item)]
                                                                                       [:li "motorist killed " (:total_number_motorist_killed item) "/" (:cluster_number_motorist_killed item)]
-                                                                                      ]]])]
-                                                             [:div#map]])]
+                                                                                      ]]])])
+                                                         ]]
                                                         )})));  }}}
 
 (defn setup-filter-controller [filter-state]

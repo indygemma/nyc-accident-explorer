@@ -7,5 +7,10 @@ var L = {
     },
     "tileLayer": {
         "addTo": function(){}
+    },
+    "layerGroup": {
+        "clearLayers": function(){},
+        "addTo": function(){},
+        "addLayer": function(){},
     }
 };
