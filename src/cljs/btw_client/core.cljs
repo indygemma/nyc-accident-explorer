@@ -1648,6 +1648,7 @@
 (defn cluster-component [filter-state];  {{{
     (let [the-map (atom nil)
           cluster-markers (atom nil)
+          map-state (reagent/atom {})
           url (str (service-url) "/rpc/stats_cluster_cached_by_filter_accidents?cluster_size=eq.25m&limit=10")]
         (base-filtered-component {:name "cluster-component"
                                   :filter-state filter-state
@@ -1657,6 +1658,9 @@
                                                         :order-by "&order=accident_count.desc"
                                                         :last-filter-state @filter-state})
                                   :update-state-on-load (fn [state filter-state response]
+                                                          ; when we are filtering for a cluster id, remove hover cluster
+                                                          ;(when (not (nil? (:cluster-id @filter-state)))
+                                                            ;(swap! map-state assoc :hover-cluster-key nil))
                                                           (reset! state {:result response
                                                                          :url (str url (:order-by @state))
                                                                          :last-filter-state @filter-state
@@ -1665,21 +1669,32 @@
                                   :component-did-update
                                   (fn [this state]
                                     (let [[lat lng] (:coordinates (:cluster_position (first (:result @state))))
-                                          zoom-level (if (nil? (:cluster-id @filter-state))
-                                                       13 ; general listing
-                                                       19 ; zoom into a specific cluster
+                                          hover-on-cluster-key (:hover-cluster-key @map-state)
+                                          is-hovering? (not (nil? hover-on-cluster-key))
+                                          is-filtering? (not (nil? (:cluster-id @filter-state)))
+                                          zoom-level (case [is-hovering? is-filtering?]
+                                                       [false false] 13 ; general listing
+                                                       [true  false] 15 ; hovering
+                                                       [false  true] 19 ; zoom into a specific cluster
+                                                       [true   true] 19
                                                        )
                                           ]
+                                      (prn "current hover key: " hover-on-cluster-key)
                                       ; clear everything first
                                       (.clearLayers @cluster-markers)
                                       ; the default view is the first cluster
-                                      (.setView @the-map #js [lat lng] zoom-level)
+                                      (if is-hovering?
+                                        (.setView @the-map #js [(:hover-lat @map-state)
+                                                                (:hover-lng @map-state)] zoom-level)
+                                        (.setView @the-map #js [lat lng] zoom-level))
                                       (doseq [el (:result @state)]
                                         (let [[lat lng] (:coordinates (:cluster_position el))
-                                              circle    (.circle js/L #js [lat lng] 75 (clj->js {:color "red"
-                                                                                                   :fillColor "#f03"
-                                                                                                   :fillOpacity 0.5
-                                                                                                   :radius 2}))]
+                                              color (if (= hover-on-cluster-key (:cluster_key el))
+                                                      "blue" "red")
+                                              circle    (.circle js/L #js [lat lng] 75 (clj->js {:color color
+                                                                                                 :fillColor "#f03"
+                                                                                                 :fillOpacity 0.5
+                                                                                                 :radius 2}))]
                                           (.addLayer @cluster-markers circle)
                                           ))))
                                   :component-did-mount
@@ -1688,6 +1703,7 @@
                                           m (.setView (.map js/L "map") #js [40.7572323 -73.9897922] 13)
                                           markers (.layerGroup js/L)
                                           ]
+                                      (.disable (.-scrollWheelZoom m))
                                       (.addTo (.tileLayer js/L url
                                                           (clj->js {:attribution "Map data &copy; <a href=\"http://openstreetmap.org\">OpenStreetMap</a> contributors, <a href=\"http://creativecommons.org/licenses/by-sa/2.0/\">CC-BY-SA</a>, Imagery © <a href=\"http://mapbox.com\">Mapbox</a>"
                                                                     :maxZoom 18}))
@@ -1698,29 +1714,100 @@
                                       (reset! cluster-markers markers)
                                       ))
                                   :component-render (fn [state filter-state]
+                                                      @map-state
                                                         [:div#cluster.component
                                                          [:h3 "Clusters (Top 10)"]
                                                          [:div.flex-row
                                                           [:div#outer-map
                                                            [:div#map]]
                                                          (if (:has-result @state)
-                                                           [:ol
+                                                           [:ol#cluster-list
                                                               ;{:cluster_key 1500, :cluster_number_persons_injured 252, :accident_count 275, :cluster_number_cyclist_killed 0, :total_number_cyclist_killed 0, :total_number_motorist_injured 4, :cluster_size "40m", :cluster_number_cyclist_injured 34, :total_number_pedestrians_injured 5, :total_number_persons_injured 9, :total_number_motorist_killed 0, :cluster_number_persons_killed 1, :cluster_number_motorist_injured 88, :cluster_number_motorist_killed 0, :total_number_persons_killed 0, :cluster_number_pedestrians_injured 130, :cluster_number_pedestrians_killed 1, :total_number_cyclist_injured 0, :cluster_count 2257}
-                                                              (for [item (:result @state)]
-                                                                  ^{:key item} [:li [:a {:href "#" :on-click (fn [e]
-                                                                                                                 (swap! filter-state assoc :cluster-id (:cluster_key item))
-                                                                                                                 false)}
-                                                                                     [:ul
-                                                                                      [:li "total: " (:accident_count item) "/" (:cluster_count item)]
-                                                                                      [:li "persons injured: " (:total_number_persons_injured item) "/" (:cluster_number_persons_injured item)]
-                                                                                      [:li "persons killed " (:total_number_persons_killed item) "/" (:cluster_number_persons_killed item)]
-                                                                                      [:li "pedestrians injured " (:total_number_pedestrians_injured item) "/" (:cluster_number_pedestrians_injured item)]
-                                                                                      [:li "pedestrians killed " (:total_number_pedestrians_killed item) "/" (:cluster_number_pedestrians_killed item)]
-                                                                                      [:li "cyclist injured " (:total_number_cyclist_injured item) "/" (:cluster_number_cyclist_injured item)]
-                                                                                      [:li "cyclist killed " (:total_number_cyclist_killed item) "/" (:cluster_number_cyclist_killed item)]
-                                                                                      [:li "motorist injured " (:total_number_motorist_injured item) "/" (:cluster_number_motorist_injured item)]
-                                                                                      [:li "motorist killed " (:total_number_motorist_killed item) "/" (:cluster_number_motorist_killed item)]
-                                                                                      ]]])])
+                                                              (doall (for [[item index] (map vector (:result @state) (range))]
+                                                                  ^{:key item}
+                                                                  [:li {:class (when (= (:hover-cluster-key @map-state)
+                                                                                      (:cluster_key item))
+                                                                               "hover")
+                                                                        :on-mouse-move
+                                                                        (fn [event]
+                                                                          (when (not= (:hover-cluster-key @map-state)
+                                                                                      (:cluster_key item))
+                                                                            (prn "CHANGING ON HOVER" (:hover-cluster-key @map-state) (:cluster_key item))
+                                                                            (swap! map-state assoc :hover-cluster-key (:cluster_key item))
+                                                                            (swap! map-state assoc :hover-lat (first (:coordinates (:cluster_position item))))
+                                                                            (swap! map-state assoc :hover-lng (second (:coordinates (:cluster_position item)))))
+                                                                          (.preventDefault event))
+                                                                        :on-mouse-leave
+                                                                        (fn [event]
+                                                                          (prn "mouse out hover" (:hover-cluster-key @map-state))
+                                                                          (swap! map-state assoc :hover-cluster-key nil))
+                                                                        }
+                                                                   [:h4 "[" (inc index) "] Cluster #" (:cluster_key item)
+                                                                    [:br]
+                                                                    (if (= (:cluster-id @filter-state)
+                                                                           (:cluster_key item))
+                                                                      [:span [:a {:href "#" :on-click (fn [e]
+                                                                                                        (swap! filter-state assoc :cluster-id nil)
+                                                                                                        (.preventDefault e))}
+                                                                              " (click to remove filter)"]]
+                                                                      [:span [:a {:href "#" :on-click (fn [e]
+                                                                                                        (swap! filter-state assoc :cluster-id (:cluster_key item))
+                                                                                                        (.preventDefault e))}
+                                                                              " (click to apply filter)"]])
+                                                                    ]
+                                                                   [:ul#cluster-details
+                                                                    [:li.total
+                                                                     [:div.value [:span.actual (:accident_count item)] "/" [:span.total (:cluster_count item)]]
+                                                                     [:div.label" Total Accidents"]]
+                                                                    [:li.persons [:span.title "Persons"]
+                                                                     [:ul.sub
+                                                                      [:li
+                                                                       [:div.value [:span.actual (:total_number_persons_injured item)]
+                                                                                   "/"
+                                                                                   [:span.total (:cluster_number_persons_injured item)]]
+                                                                       [:div.label "Injured"]]
+                                                                      [:li
+                                                                       [:div.value [:span.actual (:total_number_persons_killed item)]
+                                                                                   "/"
+                                                                                   [:span.total (:cluster_number_persons_killed item)]]
+                                                                       [:div.label "Killed"]]]]
+                                                                    [:li.pedestrians [:span.title "Pedestrians"]
+                                                                     [:ul.sub
+                                                                      [:li
+                                                                       [:div.value [:span.actual (:total_number_pedestrians_injured item)]
+                                                                                   "/"
+                                                                                   [:span.total (:cluster_number_pedestrians_injured item)]]
+                                                                       [:div.label "Injured"]]
+                                                                      [:li
+                                                                       [:div.value [:span.actual (:total_number_pedestrians_killed item)]
+                                                                                   "/"
+                                                                                   [:span.total (:cluster_number_pedestrians_killed item)]]
+                                                                       [:div.label "Killed"]]]]
+                                                                    [:li.cyclist [:span.title "Cyclist"]
+                                                                     [:ul.sub
+                                                                      [:li
+                                                                       [:div.value [:span.actual (:total_number_cyclist_injured item)]
+                                                                                   "/"
+                                                                                   [:span.total (:cluster_number_cyclist_injured item)]]
+                                                                       [:div.label "Injured"]]
+                                                                      [:li
+                                                                       [:div.value [:span.actual (:total_number_cyclist_killed item)]
+                                                                                   "/"
+                                                                                   [:span.total (:cluster_number_cyclist_killed item)]]
+                                                                       [:div.label "Killed"]]]]
+                                                                    [:li.motorist [:span.title "Motorist"]
+                                                                     [:ul.sub
+                                                                      [:li
+                                                                       [:div.value [:span.actual (:total_number_motorist_injured item)]
+                                                                                   "/"
+                                                                                   [:span.total (:cluster_number_motorist_injured item)]]
+                                                                       [:div.label "Injured"]]
+                                                                      [:li
+                                                                       [:div.value [:span.actual (:total_number_motorist_killed item)]
+                                                                                   "/"
+                                                                                   [:span.total (:cluster_number_motorist_killed item)]]
+                                                                       [:div.label "Killed"]]]]]
+                                                                   ]))])
                                                          ]]
                                                         )})));  }}}
 

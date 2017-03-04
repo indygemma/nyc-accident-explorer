@@ -168,6 +168,11 @@ div#weekday {
     display: flex;
 }
 
+#cluster ol {
+    height: 700px;
+    overflow-y: scroll;
+}
+
 #cluster #outer-map {
     flex: 1 1;
     order: 0;
@@ -180,4 +185,91 @@ div#weekday {
     flex: 1;
     height: 700px;
     /*flex: 1;*/
+    border: 1px solid #eaeaea;
+}
+#cluster-list {
+    margin: 0px;
+    /*margin-bottom: 20px;*/
+    /*padding-right: 50px;*/
+    padding: 0px;
+}
+#cluster-list h4 {
+    margin: 0px;
+    margin-bottom: 15px;
+}
+#cluster-list h4 {
+    text-align: center;
+    margin: 0px;
+    padding: 0px;
+    padding-bottom: 15px;
+    color: #eff;
+}
+#cluster-list h4 a {
+    font-size: 0.5em;
+    color: #eee;
+}
+#cluster-list li {
+    padding: 20px;
+    /*margin-bottom: 20px;*/
+    background: #55818f;
+    border: 1px solid #555;
+}
+#cluster-list li.hover {
+    opacity: 0.9;
+}
+#cluster-details {
+    list-style: none;
+    margin: 0px;
+    padding: 0px;
+    /*margin-bottom: 10px;*/
+}
+#cluster-details li {
+    padding: 0px;
+    margin: 0px;
+    background: #444;
+    padding: 10px;
+    padding-bottom: 5px;
+    color: #fff;
+    border: 0px;
+    text-align: center;
+}
+#cluster-details li span.title {
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+}
+#cluster-details li.total {
+    background: #f93a28;
+    color: #fff;
+    padding: 10px;
+}
+#cluster-details div.value {
+    text-align: center;
+    font-size: 1.25em;
+}
+#cluster-details div.value span.actual {
+    /*background: #eaeaea;*/
+}
+#cluster-details div.value span.total {
+    /*background: green;*/
+}
+#cluster-details div.label {
+    text-align: center;
+    font-size: 0.75em;
+    margin-top: 5px;
+    font-weight: bold;
+}
+
+#cluster-details ul.sub {
+    list-style: none;
+    display: flex;
+    background: yellow;
+    margin: 0px;
+    padding: 0px;
+}
+#cluster-details ul.sub li {
+    /*background: green;*/
+    width: 100%;
+}
+#cluster-details ul.sub li div.label {
+    /*font-size: 0.75em;*/
 }

@@ -3,7 +3,11 @@ var L = {
         "addTo": function(){}
     },
     "map": {
-        "setView": function(){}
+        "setView": function(){},
+        "scrollWheelZoom": {
+            "enable": function(){},
+            "disable": function(){}
+        }
     },
     "tileLayer": {
         "addTo": function(){}
