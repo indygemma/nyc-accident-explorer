@@ -273,3 +273,9 @@ div#weekday {
 #cluster-details ul.sub li div.label {
     /*font-size: 0.75em;*/
 }
+#intersections {
+    width: 100%;
+}
+#off-streets {
+    width: 100%;
+}

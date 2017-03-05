@@ -1366,7 +1366,7 @@
 ;; Intersection Component
 ;;
 (defn intersection-component [filter-state];  {{{
-    (let [url (str (service-url) "/rpc/stats_intersection_cached_by_filter_accidents?select=name,count&limit=25")]
+    (let [url (str (service-url) "/rpc/stats_intersection_cached_by_filter_accidents?select=name,count&limit=25&order=count.desc")]
         (base-filtered-component {:name "intersection-component"
                                   :filter-state filter-state
                                   :state (reagent/atom {:has-result false
@@ -1379,7 +1379,7 @@
                                                                            :last-filter-state @filter-state
                                                                            :has-result true}))
                                   :component-render (fn [state filter-state]
-                                                        [:div
+                                                        [:div#intersections.component {:width "50%"}
                                                          [:h2 "Related Intersections (Top 25)"]
                                                          (if (:has-result @state)
                                                              [:ul
@@ -1391,7 +1391,7 @@
 ;; Off Street Component
 ;;
 (defn off-street-component [filter-state];  {{{
-    (let [url (str (service-url) "/rpc/stats_off_street_cached_by_filter_accidents?select=name,count&limit=25")]
+    (let [url (str (service-url) "/rpc/stats_off_street_cached_by_filter_accidents?select=name,count&limit=25&order=count.desc")]
         (base-filtered-component {:name "off-street-component"
                                   :filter-state filter-state
                                   :state (reagent/atom {:has-result false
@@ -1405,7 +1405,7 @@
                                                                            :has-result true}))
                                   :component-render (fn [state filter-state]
                                                         (if (not (empty? (:result @state)))
-                                                            [:div
+                                                            [:div#off-streets.component {:width "50%"}
                                                              [:h2 "Off Street Adresses (Top 25)"]
                                                              (if (:has-result @state)
                                                                  [:ul
@@ -1851,8 +1851,10 @@
           [factor-component filter-state]
          ]
          [cluster-component filter-state]
-         [intersection-component filter-state]
-         [off-street-component filter-state]
+         [:div.flex-row
+          [intersection-component filter-state]
+          [off-street-component filter-state]
+          ]
          ]))
 
 (defn footer-component []
