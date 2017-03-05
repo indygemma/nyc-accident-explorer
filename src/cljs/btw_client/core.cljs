@@ -1380,7 +1380,7 @@
                                                                            :has-result true}))
                                   :component-render (fn [state filter-state]
                                                         [:div#intersections.component {:width "50%"}
-                                                         [:h2 "Related Intersections (Top 25)"]
+                                                         [:h3 "Related Intersections (Top 25)"]
                                                          (if (:has-result @state)
                                                              [:ul
                                                               (for [item (:result @state)]
@@ -1406,7 +1406,7 @@
                                   :component-render (fn [state filter-state]
                                                         (if (not (empty? (:result @state)))
                                                             [:div#off-streets.component {:width "50%"}
-                                                             [:h2 "Off Street Adresses (Top 25)"]
+                                                             [:h3 "Off Street Adresses (Top 25)"]
                                                              (if (:has-result @state)
                                                                  [:ul
                                                                   (for [item (:result @state)]
